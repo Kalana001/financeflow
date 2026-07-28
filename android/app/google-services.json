@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "736688219970",
+    "project_id": "financialtracker-70716",
+    "storage_bucket": "financialtracker-70716.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:736688219970:android:0077cdc19cdb305e098adb",
+        "android_client_info": {
+          "package_name": "com.example.financeflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGCccLEzmp4VQv3IU2o9qZ2eBCdMgDkbA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
