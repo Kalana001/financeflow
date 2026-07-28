@@ -1,0 +1,49 @@
+name: Build Android Release APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the codebase
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Java Environment (Required for Gradle build)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Set up Flutter Environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x' # Stable version compatible with sdk limits
+          channel: 'stable'
+          cache: true
+
+      # 4. Get dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Build Android Release APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 6. Upload the built APK as a downloadable Artifact
+      - name: Upload APK Artifact
+        uses: actions/actions-artifact@v4 # Keep it clean and compatible
+        with:
+          name: financeflow-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
