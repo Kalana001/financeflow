@@ -33,23 +33,31 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. Reconstruct native platforms (Generates gradlew wrapper, local.properties)
+      # 4. Reconstruct native platforms (Generates clean gradlew and properties matching SDK version)
       - name: Reconstruct Native Platforms
-        run: flutter create . --overwrite --org com.example
-
-      # 5. Restore custom Gradle configurations and manifest from Git
-      - name: Restore Custom Android Files
         run: |
-          git checkout android/build.gradle
-          git checkout android/settings.gradle
-          git checkout android/app/build.gradle
+          flutter create . --overwrite --org com.example
+
+      # 5. Inject Google Services Plugin configuration dynamically
+      - name: Configure Firebase Gradle Plugins
+        run: |
+          # Append Google Services apply statement to App Gradle script
+          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+          
+          # Insert classpath resolution into settings.gradle
+          sed -i 's/id "dev.flutter.flutter-plugin-loader" version "1.0.0"/id "dev.flutter.flutter-plugin-loader" version "1.0.0"\n    id "com.google.gms.google-services" version "4.4.1" apply false/g' android/settings.gradle
+
+      # 6. Restore manifest and google-services configuration from Git checkins
+      - name: Restore Custom Configs
+        run: |
+          git checkout android/app/google-services.json
           git checkout android/app/src/main/AndroidManifest.xml
 
-      # 6. Install dependencies
+      # 7. Install dependencies
       - name: Install Dependencies
         run: flutter pub get
 
-      # 7. Build Android Release APK
+      # 8. Build Android Release APK
       - name: Build APK
         run: flutter build apk --release
 
