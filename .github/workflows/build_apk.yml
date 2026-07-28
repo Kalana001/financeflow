@@ -43,7 +43,7 @@ jobs:
 
       # 6. Upload the built APK as a downloadable Artifact
       - name: Upload APK Artifact
-        uses: actions/actions-artifact@v4 # Keep it clean and compatible
+        uses: actions/upload-artifact@v4
         with:
           name: financeflow-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
