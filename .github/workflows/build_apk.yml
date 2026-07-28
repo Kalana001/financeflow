@@ -48,6 +48,9 @@ jobs:
           # Inject to settings.gradle
           sed -i 's/id "dev.flutter.flutter-plugin-loader" version "1.0.0"/id "dev.flutter.flutter-plugin-loader" version "1.0.0"\n    id "com.google.gms.google-services" version "4.4.1" apply false/g' android/settings.gradle
           sed -i "s/id 'dev.flutter.flutter-plugin-loader' version '1.0.0'/id 'dev.flutter.flutter-plugin-loader' version '1.0.0'\n    id 'com.google.gms.google-services' version '4.4.1' apply false/g" android/settings.gradle
+          
+          # Switch Gradle distribution version to a stable cached binary to avoid HTTP 409 conflicts
+          sed -i 's/gradle-7.6.3-all.zip/gradle-8.0-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
 
       # 6. Verify Gradle configs before build
       - name: Verify Gradle Configs
