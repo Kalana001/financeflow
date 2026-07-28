@@ -51,6 +51,12 @@ jobs:
           
           # Switch Gradle distribution version to a stable cached binary to avoid HTTP 409 conflicts
           sed -i 's/gradle-7.6.3-all.zip/gradle-8.0-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties
+          
+          # Force target SDK and compile SDK to 34 (Android 14) to comply with modern Play Store privacy requirements
+          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/g' android/app/build.gradle
+          sed -i 's/targetSdk flutter.targetSdk/targetSdk 34/g' android/app/build.gradle
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle
+          sed -i 's/compileSdk flutter.compileSdk/compileSdk 34/g' android/app/build.gradle
 
       # 6. Verify Gradle configs before build
       - name: Verify Gradle Configs
