@@ -38,11 +38,11 @@ jobs:
         run: |
           flutter create . --overwrite --org com.example
 
-      # 5. Inject Google Services Plugin configuration dynamically
+      # 5. Inject Google Services Plugin configuration dynamically (Modern Plugins DSL)
       - name: Configure Firebase Gradle Plugins
         run: |
-          # Append Google Services apply statement to App Gradle script
-          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+          # Insert google-services plugin into the top plugins block of app/build.gradle
+          sed -i 's/id "dev.flutter.flutter-gradle-plugin"/id "dev.flutter.flutter-gradle-plugin"\n    id "com.google.gms.google-services"/g' android/app/build.gradle
           
           # Insert classpath resolution into settings.gradle
           sed -i 's/id "dev.flutter.flutter-plugin-loader" version "1.0.0"/id "dev.flutter.flutter-plugin-loader" version "1.0.0"\n    id "com.google.gms.google-services" version "4.4.1" apply false/g' android/settings.gradle
