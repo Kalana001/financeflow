@@ -33,11 +33,23 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. Get dependencies
+      # 4. Reconstruct native platforms (Generates gradlew wrapper, local.properties)
+      - name: Reconstruct Native Platforms
+        run: flutter create . --overwrite --org com.example
+
+      # 5. Restore custom Gradle configurations and manifest from Git
+      - name: Restore Custom Android Files
+        run: |
+          git checkout android/build.gradle
+          git checkout android/settings.gradle
+          git checkout android/app/build.gradle
+          git checkout android/app/src/main/AndroidManifest.xml
+
+      # 6. Install dependencies
       - name: Install Dependencies
         run: flutter pub get
 
-      # 5. Build Android Release APK
+      # 7. Build Android Release APK
       - name: Build APK
         run: flutter build apk --release
 
