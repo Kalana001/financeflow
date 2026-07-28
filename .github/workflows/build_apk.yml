@@ -66,11 +66,13 @@ jobs:
           echo "=== app/build.gradle ==="
           head -n 30 android/app/build.gradle
 
-      # 6. Restore manifest and google-services configuration from Git checkins
+      # 6. Restore manifest, google-services, and custom Dart source files from Git checkins
       - name: Restore Custom Configs
         run: |
           git checkout android/app/google-services.json
           git checkout android/app/src/main/AndroidManifest.xml
+          git checkout lib/
+          git checkout pubspec.yaml
 
       # 7. Install dependencies
       - name: Install Dependencies
