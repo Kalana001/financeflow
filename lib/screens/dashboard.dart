@@ -263,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (Sleek Professional Wealth Overview)
+  // 1. HOME TAB
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -405,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 🎯 Top Savings Goals Overview (Replaces Recent Activity on Home)
+          // Top Savings Goals Overview
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -659,7 +659,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (History)
+  // 2. TRANSACTIONS TAB
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _transactions.where((tx) {
@@ -712,7 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (Clean Read-Only Overview)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -854,7 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 📊 Cashflow Ratio Bar Chart
+          // Cashflow Ratio Bar Chart
           const Text('Income vs Expense Cashflow Ratio', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -872,18 +872,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 🥧 Category Spending Donut Chart & Custom Category Manager
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Category Spending Distribution', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextButton.icon(
-                onPressed: _showAddCategoryModal,
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add Category', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
+          // Category Spending Donut Chart
+          const Text('Category Spending Distribution', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -973,11 +963,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Modal to Add Custom Expense Category
-  void _showAddCategoryModal() {
+  Future<String?> _showAddCategoryModal() async {
     final nameController = TextEditingController();
     String selectedIcon = '🍔';
 
-    showDialog(
+    return showDialog<String>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -1005,17 +995,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
                 ElevatedButton(
                   onPressed: () async {
                     final n = nameController.text.trim();
                     if (n.isNotEmpty) {
-                      Navigator.pop(context);
-                      await widget.storageService.addCategory({
-                        'name': n,
-                        'icon': selectedIcon,
-                      });
-                      _loadData();
+                      final newCat = {'name': n, 'icon': selectedIcon};
+                      await widget.storageService.addCategory(newCat);
+                      await _loadData();
+                      Navigator.pop(context, n);
                     }
                   },
                   child: const Text('Create Category'),
@@ -1480,7 +1468,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final amountController = TextEditingController();
     final noteController = TextEditingController();
     final locationController = TextEditingController();
-    String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food';
+    String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
     String type = 'expense';
     String selectedAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
 
@@ -1528,12 +1516,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account'),
                   ),
                   const SizedBox(height: 12),
+
+                  // Category Selector with "+ Add New Category" Option
                   DropdownButtonFormField<String>(
                     value: category,
-                    items: _categories.map((c) {
-                      return DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'));
-                    }).toList(),
-                    onChanged: (val) => setModalState(() => category = val ?? category),
+                    items: [
+                      ..._categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))),
+                      const DropdownMenuItem(value: '__ADD_NEW__', child: Text('➕ + Add New Category', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                    ],
+                    onChanged: (val) async {
+                      if (val == '__ADD_NEW__') {
+                        final createdName = await _showAddCategoryModal();
+                        if (createdName != null && createdName.isNotEmpty) {
+                          setModalState(() {
+                            category = createdName;
+                          });
+                        }
+                      } else if (val != null) {
+                        setModalState(() => category = val);
+                      }
+                    },
                     decoration: const InputDecoration(labelText: 'Category'),
                   ),
                   const SizedBox(height: 12),
