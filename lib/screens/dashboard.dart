@@ -1,11 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/local_storage_service.dart';
 
 class DashboardScreen extends StatefulWidget {
-  final SupabaseService supabaseService;
+  final LocalStorageService storageService;
+  final VoidCallback onLockRequested;
+  final VoidCallback onResetRequested;
 
-  const DashboardScreen({super.key, required this.supabaseService});
+  const DashboardScreen({
+    super.key,
+    required this.storageService,
+    required this.onLockRequested,
+    required this.onResetRequested,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -19,9 +26,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   String _filterCategory = 'All';
 
-  // Local Preferences
+  // Preferences
   bool _simpleMode = false;
-  bool _isDarkMode = false;
   String _preferredCurrency = 'LKR';
   Color _themeColor = const Color(0xFF2563EB);
 
@@ -29,7 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _pendingHighValueTx;
   final _otpController = TextEditingController();
 
-  // Goals Mock Data
+  // Goals List
   final List<Map<String, dynamic>> _goals = [
     {'title': 'New Phone', 'target': 150000.0, 'current': 90000.0, 'icon': Icons.phone_iphone, 'color': Colors.blue},
     {'title': 'Emergency Fund', 'target': 300000.0, 'current': 210000.0, 'icon': Icons.shield, 'color': Colors.green},
@@ -45,8 +51,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final txs = await widget.supabaseService.getTransactions();
-      final prof = await widget.supabaseService.getProfile();
+      final txs = await widget.storageService.getTransactions();
+      final prof = (await widget.storageService.getProfile()) ?? {};
       setState(() {
         _transactions = txs;
         _profile = prof;
@@ -54,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _simpleMode = prof['simple_mode'] == true;
       });
     } catch (e) {
-      print('Error loading data: $e');
+      print('Error loading local data: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -62,13 +68,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _addTransaction(double amount, String category, String type, String notes, String location) async {
     final newTx = {
+      'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
       'amount': amount,
       'category': category,
       'type': type,
       'payment_method': 'Cash',
       'date': DateTime.now().toIso8601String().substring(0, 10),
       'notes': notes.isEmpty ? category : notes,
-      'tags': ['manual'],
       'location': location.isEmpty ? 'Colombo' : location,
     };
 
@@ -80,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    await widget.supabaseService.insertTransaction(newTx);
+    await widget.storageService.addTransaction(newTx);
     _loadData();
   }
 
@@ -118,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () async {
                 if (_otpController.text == '123456' || _otpController.text == '123') {
                   Navigator.pop(context);
-                  await widget.supabaseService.insertTransaction(_pendingHighValueTx!);
+                  await widget.storageService.addTransaction(_pendingHighValueTx!);
                   setState(() => _pendingHighValueTx = null);
                   _otpController.clear();
                   _loadData();
@@ -181,6 +187,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.lock_outline),
+            tooltip: 'Lock App',
+            onPressed: widget.onLockRequested,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
           )
@@ -226,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Hello, ${_profile['name'] ?? 'Alex'}! 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Text('Welcome to your secure wealth dashboard.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Welcome to your private wealth tracker.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
               CircleAvatar(
@@ -601,7 +612,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             value: _simpleMode,
             onChanged: (val) {
               setState(() => _simpleMode = val);
-              widget.supabaseService.updateProfile({'simple_mode': val});
+              widget.storageService.updateProfileField('simple_mode', val);
             },
           ),
         ),
@@ -617,7 +628,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onChanged: (val) {
                 if (val != null) {
                   setState(() => _preferredCurrency = val);
-                  widget.supabaseService.updateProfile({'currency': val});
+                  widget.storageService.updateProfileField('currency', val);
                 }
               },
             ),
@@ -648,20 +659,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
 
         const SizedBox(height: 16),
-        const Text('Data Privacy & Control', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('Data Privacy & Reset', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
         Card(
           child: ListTile(
-            title: const Text('Download My Financial Data (GDPR)'),
+            title: const Text('Export Local Data (JSON)'),
             subtitle: const Text('Export a copy of your records in JSON format'),
             trailing: const Icon(Icons.download),
             onTap: () async {
-              final jsonStr = await widget.supabaseService.exportUserData();
+              final jsonStr = await widget.storageService.exportAllDataJson();
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Data Decrypted & Exported'),
+                  title: const Text('Data Exported'),
                   content: SingleChildScrollView(child: Text(jsonStr)),
                   actions: [
                     TextButton(
@@ -677,25 +688,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         Card(
           child: ListTile(
-            title: const Text('Delete Account Permanently'),
-            subtitle: const Text('Wipes your transactions and logs completely'),
+            title: const Text('Reset Profile & Clear Data'),
+            subtitle: const Text('Wipes profile name, PIN, and local transactions'),
             trailing: const Icon(Icons.delete, color: Colors.red),
             onTap: () async {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Confirm Deletion?'),
-                  content: const Text('This will delete all your data and profiles. This cannot be undone.'),
+                  title: const Text('Reset Profile & Data?'),
+                  content: const Text('This will delete your local profile name, PIN, and transactions. This action cannot be undone.'),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Reset', style: TextStyle(color: Colors.red))),
                   ],
                 ),
               );
 
               if (confirm == true) {
-                await widget.supabaseService.deleteUserAccount();
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                await widget.storageService.clearAllData();
+                widget.onResetRequested();
               }
             },
           ),
@@ -737,17 +748,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       itemBuilder: (context, index) {
         final tx = txList[index];
         final isExpense = tx['type'] == 'expense';
-        return Card(
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
-              child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
-            ),
-            title: Text(tx['notes'] ?? tx['category']),
-            subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location']}'),
-            trailing: Text(
-              '${isExpense ? '-' : '+'} $_preferredCurrency ${tx['amount']}',
-              style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
+        return Dismissible(
+          key: Key(tx['id'] ?? index.toString()),
+          background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 16), child: const Icon(Icons.delete, color: Colors.white)),
+          onDismissed: (_) async {
+            await widget.storageService.deleteTransaction(tx['id']);
+            _loadData();
+          },
+          child: Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
+                child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
+              ),
+              title: Text(tx['notes'] ?? tx['category']),
+              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location']}'),
+              trailing: Text(
+                '${isExpense ? '-' : '+'} $_preferredCurrency ${tx['amount']}',
+                style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
+              ),
             ),
           ),
         );
