@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/local_storage_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -42,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Icon Choices for Custom Wallets
   final List<String> _walletIcons = ['💵', '🏦', '💳', '📱', '🐖', '💎', '🛒', '⚡'];
 
-  // Dynamic Goals List with Deposit History
+  // Dynamic Goals List with Deposit & Change History
   final List<Map<String, dynamic>> _goals = [
     {
       'id': 'g-1',
@@ -52,7 +53,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'deposits_count': 4,
       'last_deposit_amount': 15000.0,
       'icon': Icons.phone_iphone,
-      'color': Colors.blue
+      'color': Colors.blue,
+      'history': [
+        {'type': 'deposit', 'amount': 15000.0, 'date': '2026-07-28 14:20', 'notes': 'Saved from monthly paycheck'},
+        {'type': 'deposit', 'amount': 25000.0, 'date': '2026-07-20 10:15', 'notes': 'Bonus deposit'},
+        {'type': 'target_change', 'amount': 150000.0, 'date': '2026-07-15 09:00', 'notes': 'Target set to 150,000'},
+      ]
     },
     {
       'id': 'g-2',
@@ -62,7 +68,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'deposits_count': 6,
       'last_deposit_amount': 20000.0,
       'icon': Icons.shield,
-      'color': Colors.green
+      'color': Colors.green,
+      'history': [
+        {'type': 'deposit', 'amount': 20000.0, 'date': '2026-07-25 18:40', 'notes': 'Emergency fund deposit'},
+        {'type': 'deposit', 'amount': 50000.0, 'date': '2026-07-10 11:30', 'notes': 'Initial allocation'},
+      ]
     },
   ];
 
@@ -148,6 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TextField(
                 controller: _otpController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(labelText: '6-Digit Verification OTP'),
               ),
             ],
@@ -441,7 +452,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: const Text('Set Monthly Target Budget'),
           content: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
             decoration: const InputDecoration(labelText: 'Target Amount (e.g. 100000)'),
           ),
           actions: [
@@ -515,7 +527,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Wallet Name')),
                   const SizedBox(height: 12),
-                  TextField(controller: openingController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Opening Balance')),
+                  TextField(
+                    controller: openingController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Opening Balance'),
+                  ),
                   const SizedBox(height: 12),
                   const Text('Select Wallet Icon:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
@@ -570,7 +587,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Wallet Name (e.g. Sampath Bank)')),
                   const SizedBox(height: 12),
-                  TextField(controller: balanceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Opening Balance')),
+                  TextField(
+                    controller: balanceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Opening Balance'),
+                  ),
                   const SizedBox(height: 12),
                   const Text('Select Icon:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
@@ -644,14 +666,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['All', 'Food', 'Transport', 'Salary', 'Bills'].map((cat) {
-                    final selected = _filterCategory == cat;
+                  children: [
+                    'All',
+                    '🍔 Food',
+                    '🚗 Transport',
+                    '⚡ Bills',
+                    '🛒 Shopping',
+                    '💰 Salary',
+                    '🏥 Medical',
+                    '🍿 Entertainment',
+                  ].map((cat) {
+                    final selected = _filterCategory == cat || (_filterCategory == 'Food' && cat.contains('Food'));
                     return Padding(
                       padding: const EdgeInsets.only(right: 6.0),
                       child: ChoiceChip(
                         label: Text(cat),
                         selected: selected,
-                        onSelected: (_) => setState(() => _filterCategory = cat),
+                        onSelected: (_) => setState(() => _filterCategory = cat.replaceAll(RegExp(r'[^\w\s]'), '').trim()),
                       ),
                     );
                   }).toList(),
@@ -666,7 +697,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Category Dropdown & Cashflow Charts)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -698,20 +729,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final dailyAvg = _totalExpense > 0 ? (_totalExpense / 30.0) : 0.0;
     final healthScore = _totalIncome > 0 ? (((_totalIncome - _totalExpense) / _totalIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
-    
     final monthlyExpense = _totalExpense > 0 ? _totalExpense : 25000.0;
     final runwayMonths = (_totalNetWorth / monthlyExpense).clamp(0.0, 99.0);
 
-    // Selected Category Expenses for What-If Simulator
     final selectedCatExpenses = _transactions
         .where((t) => t['category'] == _whatIfCategory && t['type'] == 'expense')
         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
     final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
 
-    // Cashflow Totals for Bar Chart
     final totalCashflow = (_totalIncome + _totalExpense) > 0 ? (_totalIncome + _totalExpense) : 1.0;
     final incomePct = (_totalIncome / totalCashflow).clamp(0.0, 1.0);
     final expensePct = (_totalExpense / totalCashflow).clamp(0.0, 1.0);
@@ -724,7 +751,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
 
-          // Health Score & Emergency Survival Runway
           Row(
             children: [
               Expanded(
@@ -763,7 +789,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 🔮 AI "What-If" Predictive Simulator with Category Dropdown Selector
+          // AI What-If Simulator
           Card(
             color: Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -813,7 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 📊 Income vs Expense Cashflow Comparison Bar Chart
+          // Cashflow Ratio Bar Chart
           const Text('Income vs Expense Cashflow Ratio', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -831,7 +857,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 📈 Category Spending Breakdown Bars
+          // Category Breakdown Bars
           const Text('Category Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -839,13 +865,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildCategoryProgressRow('🍔 Food', _getCategoryPct('Food'), Colors.orange),
+                  _buildCategoryProgressRow('🍔 Food & Dining', _getCategoryPct('Food'), Colors.orange),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('🚗 Transport', _getCategoryPct('Transport'), Colors.blue),
+                  _buildCategoryProgressRow('🚗 Transport & Fuel', _getCategoryPct('Transport'), Colors.blue),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('⚡ Bills', _getCategoryPct('Bills'), Colors.red),
+                  _buildCategoryProgressRow('⚡ Bills & Utilities', _getCategoryPct('Bills'), Colors.red),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('🛒 Shopping', _getCategoryPct('Shopping'), Colors.purple),
+                  _buildCategoryProgressRow('🛒 Shopping & Store', _getCategoryPct('Shopping'), Colors.purple),
                 ],
               ),
             ),
@@ -904,7 +930,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB
+  // 4. GOALS TAB (With Goal Detail View & Activity History)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -933,7 +959,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final depositsCount = (g['deposits_count'] as int? ?? 1);
             final lastAmount = (g['last_deposit_amount'] as double? ?? 15000.0);
 
-            // Adaptive Velocity Calculation
             String velocityStr;
             if (depositsCount >= 5) {
               final estDays = (remaining / (lastAmount / 5.0)).ceil().clamp(1, 999);
@@ -943,63 +968,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
               velocityStr = '⏱️ Regularity: Est. completion in ~$months months';
             }
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                            ],
+            return GestureDetector(
+              onTap: () => _showGoalDetailModal(g),
+              child: Card(
+                margin: const EdgeInsets.only(bottom: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                          onPressed: () => _showEditGoalModal(g),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: pct,
-                        minHeight: 8,
-                        backgroundColor: Colors.grey[200],
-                        valueColor: AlwaysStoppedAnimation<Color>(g['color']),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                            onPressed: () => _showEditGoalModal(g),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                          onPressed: () => _showDepositToGoalModal(g),
-                          icon: const Icon(Icons.add, size: 14),
-                          label: const Text('Deposit', style: TextStyle(fontSize: 11)),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          minHeight: 8,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(g['color']),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                            onPressed: () => _showDepositToGoalModal(g),
+                            icon: const Icon(Icons.add, size: 14),
+                            label: const Text('Deposit', style: TextStyle(fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           }),
         ],
       ),
+    );
+  }
+
+  // Goal History Detail View Modal
+  void _showGoalDetailModal(Map<String, dynamic> goal) {
+    final historyList = (goal['history'] as List? ?? []);
+    final target = (goal['target'] as double);
+    final current = (goal['current'] as double);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${goal['title']} - Activity History', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('Target: $_preferredCurrency ${target.toStringAsFixed(0)} • Saved: $_preferredCurrency ${current.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const Divider(height: 24),
+              const Text('Goal History Log:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 10),
+              historyList.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No deposit or target history logged yet.', style: TextStyle(color: Colors.grey)),
+                    )
+                  : Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: historyList.length,
+                        itemBuilder: (context, index) {
+                          final h = historyList[index];
+                          final isDeposit = h['type'] == 'deposit';
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(isDeposit ? Icons.arrow_upward : Icons.edit, color: isDeposit ? Colors.green : Colors.blue),
+                            title: Text(isDeposit ? 'Deposit: +$_preferredCurrency ${h['amount']}' : 'Target Updated: $_preferredCurrency ${h['amount']}'),
+                            subtitle: Text('${h['date']} • ${h['notes']}'),
+                          );
+                        },
+                      ),
+                    ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1012,7 +1090,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: Text('Deposit to "${goal['title']}"'),
           content: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
             decoration: const InputDecoration(labelText: 'Deposit Amount (e.g. 5000)'),
           ),
           actions: [
@@ -1026,6 +1105,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     goal['current'] = (goal['current'] as double) + amt;
                     goal['deposits_count'] = (goal['deposits_count'] as int? ?? 1) + 1;
                     goal['last_deposit_amount'] = amt;
+
+                    final history = (goal['history'] as List? ?? []);
+                    history.insert(0, {
+                      'type': 'deposit',
+                      'amount': amt,
+                      'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
+                      'notes': 'Manual goal deposit'
+                    });
+                    goal['history'] = history;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('🎉 Deposited $_preferredCurrency $amt into ${goal['title']}!')),
@@ -1054,7 +1142,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title')),
               const SizedBox(height: 12),
-              TextField(controller: targetController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target Amount')),
+              TextField(
+                controller: targetController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                decoration: const InputDecoration(labelText: 'Target Amount'),
+              ),
             ],
           ),
           actions: [
@@ -1068,6 +1161,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   setState(() {
                     goal['title'] = t;
                     goal['target'] = target;
+
+                    final history = (goal['history'] as List? ?? []);
+                    history.insert(0, {
+                      'type': 'target_change',
+                      'amount': target,
+                      'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
+                      'notes': 'Target amount updated to $target'
+                    });
+                    goal['history'] = history;
                   });
                 }
               },
@@ -1093,7 +1195,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
               const SizedBox(height: 12),
-              TextField(controller: targetController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target Amount')),
+              TextField(
+                controller: targetController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                decoration: const InputDecoration(labelText: 'Target Amount'),
+              ),
             ],
           ),
           actions: [
@@ -1114,6 +1221,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'last_deposit_amount': 10000.0,
                       'icon': Icons.stars,
                       'color': Colors.purple,
+                      'history': [
+                        {
+                          'type': 'target_change',
+                          'amount': target,
+                          'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
+                          'notes': 'Goal created with target $target'
+                        }
+                      ],
                     });
                   });
                 }
@@ -1293,7 +1408,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: amountController,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                     decoration: const InputDecoration(labelText: 'Amount'),
                   ),
                   const SizedBox(height: 12),
@@ -1317,11 +1433,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   DropdownButtonFormField<String>(
                     value: category,
                     items: const [
-                      DropdownMenuItem(value: 'Food', child: Text('Food')),
-                      DropdownMenuItem(value: 'Transport', child: Text('Transport')),
-                      DropdownMenuItem(value: 'Salary', child: Text('Salary')),
-                      DropdownMenuItem(value: 'Bills', child: Text('Bills')),
-                      DropdownMenuItem(value: 'Shopping', child: Text('Shopping')),
+                      DropdownMenuItem(value: 'Food', child: Text('🍔 Food & Dining')),
+                      DropdownMenuItem(value: 'Transport', child: Text('🚗 Transport & Fuel')),
+                      DropdownMenuItem(value: 'Salary', child: Text('💰 Salary & Income')),
+                      DropdownMenuItem(value: 'Bills', child: Text('⚡ Bills & Utilities')),
+                      DropdownMenuItem(value: 'Shopping', child: Text('🛒 Shopping & Store')),
+                      DropdownMenuItem(value: 'Medical', child: Text('🏥 Medical & Health')),
+                      DropdownMenuItem(value: 'Entertainment', child: Text('🍿 Entertainment')),
                     ],
                     onChanged: (val) => setModalState(() => category = val ?? 'Food'),
                     decoration: const InputDecoration(labelText: 'Category'),
