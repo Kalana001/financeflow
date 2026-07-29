@@ -697,7 +697,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (With Pie/Donut Chart & Cashflow Charts)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -789,7 +789,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // AI What-If Simulator
+          // 🔮 AI What-If Simulator
           Card(
             color: Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -839,7 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Cashflow Ratio Bar Chart
+          // 📊 Cashflow Ratio Bar Chart
           const Text('Income vs Expense Cashflow Ratio', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -857,20 +857,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Category Breakdown Bars
-          const Text('Category Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+          // 🥧 Category Spending Donut Chart & Breakdown
+          const Text('Category Spending Distribution Donut Chart', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
+                  // Donut Visual Ring
+                  Container(
+                    width: 140,
+                    height: 140,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _themeColor, width: 14),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Total Spend', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text('$_preferredCurrency ${_totalExpense.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   _buildCategoryProgressRow('🍔 Food & Dining', _getCategoryPct('Food'), Colors.orange),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildCategoryProgressRow('🚗 Transport & Fuel', _getCategoryPct('Transport'), Colors.blue),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildCategoryProgressRow('⚡ Bills & Utilities', _getCategoryPct('Bills'), Colors.red),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildCategoryProgressRow('🛒 Shopping & Store', _getCategoryPct('Shopping'), Colors.purple),
                 ],
               ),
@@ -930,7 +949,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (With Goal Detail View & Activity History)
+  // 4. GOALS TAB
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1031,7 +1050,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Goal History Detail View Modal
   void _showGoalDetailModal(Map<String, dynamic> goal) {
     final historyList = (goal['history'] as List? ?? []);
     final target = (goal['target'] as double);
