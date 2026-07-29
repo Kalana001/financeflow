@@ -24,6 +24,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _accounts = [];
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
+  bool _isProUser = false; // PRO Membership State
   String _searchQuery = '';
   String _filterCategory = 'All';
 
@@ -31,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _simpleMode = false;
   String _preferredCurrency = 'LKR';
   double _targetMonthlyBudget = 100000.0;
+  double _whatIfCutPct = 20.0; // What-If Simulator State
   Color _themeColor = const Color(0xFF2563EB);
 
   // High Value OTP Prompt State
@@ -42,9 +44,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Goals List
   final List<Map<String, dynamic>> _goals = [
-    {'title': 'New Phone', 'target': 150000.0, 'current': 90000.0, 'icon': Icons.phone_iphone, 'color': Colors.blue},
-    {'title': 'Emergency Fund', 'target': 300000.0, 'current': 210000.0, 'icon': Icons.shield, 'color': Colors.green},
-    {'title': 'Vacation Trip', 'target': 100000.0, 'current': 45000.0, 'icon': Icons.flight_takeoff, 'color': Colors.orange},
+    {'id': 'g-1', 'title': 'New Phone', 'target': 150000.0, 'current': 90000.0, 'monthly_contrib': 15000.0, 'icon': Icons.phone_iphone, 'color': Colors.blue},
+    {'id': 'g-2', 'title': 'Emergency Fund', 'target': 300000.0, 'current': 210000.0, 'monthly_contrib': 20000.0, 'icon': Icons.shield, 'color': Colors.green},
   ];
 
   @override
@@ -65,6 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _simpleMode = prof['simple_mode'] == true;
+        _isProUser = prof['is_pro'] == true;
         _targetMonthlyBudget = (double.tryParse(prof['monthly_budget'].toString()) ?? 100000.0);
       });
     } catch (e) {
@@ -166,6 +168,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // 👑 PRO PAYWALL SUBSCRIPTION DIALOG (Monetization Hook)
+  void _showProUpgradeModal(String featureName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.amber[100], shape: BoxShape.circle),
+                child: const Icon(Icons.star, color: Colors.amber, size: 40),
+              ),
+              const SizedBox(height: 12),
+              const Text('Unlock FinanceFlow PRO', style: TextStyle(fontFamily: 'Outfit', fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text(
+                'You reached the free limit for $featureName. Upgrade to PRO for unlimited access!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+
+              _buildProFeatureRow(Icons.account_balance_wallet, 'Unlimited Accounts & Wallets'),
+              _buildProFeatureRow(Icons.track_changes, 'Unlimited Savings Goals & ETA Calculator'),
+              _buildProFeatureRow(Icons.psychology, 'AI "What-If" Predictive Time Machine'),
+              _buildProFeatureRow(Icons.file_download, 'PDF & CSV Financial Statement Export'),
+
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  setState(() => _isProUser = true);
+                  await widget.storageService.updateProfileField('is_pro', true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🎉 Congratulations! You are now a FinanceFlow PRO member!')),
+                  );
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Upgrade to PRO (LKR 490 / Month)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProFeatureRow(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -195,7 +272,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            if (_isProUser)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(10)),
+                child: const Text('PRO', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -227,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (Redesigned Net Worth & Edit Budget)
+  // 1. HOME TAB
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -297,13 +385,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Accounts & Wallets Section
+          // Accounts & Wallets Section (With Freemium Limit Interceptor)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('My Accounts & Wallets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               TextButton.icon(
-                onPressed: _showAddAccountModal,
+                onPressed: () {
+                  if (!_isProUser && _accounts.length >= 3) {
+                    _showProUpgradeModal('Accounts & Wallets');
+                  } else {
+                    _showAddAccountModal();
+                  }
+                },
                 icon: const Icon(Icons.add_card, size: 16),
                 label: const Text('Add Wallet'),
               ),
@@ -322,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Monthly Target Budget Progress Card with Edit Button
+          // Target Budget Card
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -369,7 +463,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Recent Transactions
+          // Recent Activity
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -442,7 +536,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Account Detail Modal (Transactions by Wallet + Edit Name/Opening Balance)
   void _showAccountDetailModal(String id, String name, double balance, Map<String, dynamic> rawAcc) {
     final walletTxs = _transactions.where((t) => t['account_id'] == id || t['account_id'] == name).toList();
 
@@ -648,21 +741,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ENHANCED ANALYTICS & AI ADVISOR TAB
+  // 3. UNIQUE ANALYTICS (With Empty State Guard & What-If Simulator)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
+    // Empty state guard for new users with zero transactions
+    if (_transactions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.insights, size: 64, color: Colors.blue[300]),
+              const SizedBox(height: 16),
+              const Text('No Transactions Recorded Yet!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text(
+                'Log your first income or expense transaction to unlock live Financial Health Scores, Category Breakdown, and AI Advisor tips.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                onPressed: () => _showAddTransactionBottomSheet(),
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text('Add First Transaction', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final dailyAvg = _totalExpense > 0 ? (_totalExpense / 30.0) : 0.0;
     final healthScore = _totalIncome > 0 ? (((_totalIncome - _totalExpense) / _totalIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
+    
+    // Emergency Financial Runway (Months of survival)
+    final monthlyExpense = _totalExpense > 0 ? _totalExpense : 25000.0;
+    final runwayMonths = (_totalNetWorth / monthlyExpense).clamp(0.0, 99.0);
+
+    // Projected What-If Savings calculation
+    final foodExpenses = _transactions.where((t) => t['category'] == 'Food' && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    final sixMonthSavings = (foodExpenses * (_whatIfCutPct / 100.0)) * 6;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Financial Insights & Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
 
-          // Health Score & Daily Burn Rate Badges
+          // Health Score & Emergency Survival Runway
           Row(
             children: [
               Expanded(
@@ -675,7 +806,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         const Text('Health Score', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('$healthScore / 100 (Excellent)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green)),
+                        Text('$healthScore / 100 (Healthy)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green)),
                       ],
                     ),
                   ),
@@ -683,15 +814,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               Expanded(
                 child: Card(
-                  color: Colors.blue[50],
+                  color: Colors.purple[50],
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Daily Burn Rate', style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
+                        const Text('Emergency Runway', style: TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('$_preferredCurrency ${dailyAvg.toStringAsFixed(0)} / day', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                        Text('${runwayMonths.toStringAsFixed(1)} Months', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple)),
                       ],
                     ),
                   ),
@@ -701,10 +832,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // AI Advisor Card
+          // 🔮 AI "What-If" Predictive Simulator Card
           Card(
-            color: Colors.amber[50],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.amber[300]!)),
+            color: Colors.blue[50],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -712,17 +843,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.psychology, color: Colors.amber),
+                      Icon(Icons.auto_awesome, color: Colors.blue),
                       SizedBox(width: 8),
-                      Text('🤖 AI Financial Assistant Advice', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+                      Text('🔮 AI "What-If" Predictive Simulator', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                     ],
                   ),
                   const SizedBox(height: 8),
+                  Text('What if I reduce Food expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Slider(
+                    value: _whatIfCutPct,
+                    min: 0,
+                    max: 50,
+                    divisions: 10,
+                    label: '${_whatIfCutPct.toStringAsFixed(0)}%',
+                    onChanged: (val) => setState(() => _whatIfCutPct = val),
+                  ),
                   Text(
-                    _totalExpense > _totalIncome
-                        ? "• Your monthly spend exceeds income! Try reducing Food dining out to save $_preferredCurrency 10,000."
-                        : "• Excellent savings ratio! You spent 20% less than your monthly target budget. Allocate $_preferredCurrency 15,000 to Emergency Savings.",
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    '👉 Projected 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 13),
                   ),
                 ],
               ),
@@ -730,21 +868,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Spending Category Breakdown
-          const Text('Expense Categories Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+          // ⚖️ 50 / 30 / 20 Financial Rule Ratio Bar
+          const Text('50/30/20 Financial Pillar Allocation', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildCategoryProgressRow('🍔 Food', 0.45, Colors.orange),
+                  _buildCategoryProgressRow('🏠 Needs (Rent/Bills)', 0.50, Colors.blue),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('🚗 Transport', 0.25, Colors.blue),
+                  _buildCategoryProgressRow('🍕 Wants (Dining/Movies)', 0.30, Colors.orange),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('⚡ Bills', 0.20, Colors.red),
-                  const SizedBox(height: 12),
-                  _buildCategoryProgressRow('🛒 Shopping', 0.10, Colors.purple),
+                  _buildCategoryProgressRow('💎 Savings/Assets', 0.20, Colors.green),
                 ],
               ),
             ),
@@ -772,7 +908,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB
+  // 4. GOALS TAB (With Goal Velocity ETA Calculator & Freemium Limits)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -785,7 +921,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text('Financial Goals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  if (!_isProUser && _goals.length >= 2) {
+                    _showProUpgradeModal('Financial Goals');
+                  } else {
+                    _showAddGoalModal();
+                  }
+                },
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add Goal'),
               )
@@ -794,11 +936,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           ..._goals.map((g) {
             final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
+            final remaining = (g['target'] - g['current']).clamp(0.0, double.infinity);
+            final monthlyContrib = (g['monthly_contrib'] ?? 15000.0);
+            final monthsLeft = (remaining / monthlyContrib).ceil();
+
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
@@ -818,6 +966,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(g['color'])),
+                    const SizedBox(height: 8),
+                    Text(
+                      '⏱️ Real-time Velocity: Est. completion in $monthsLeft months',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
               ),
@@ -828,13 +981,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _showAddGoalModal() {
+    final titleController = TextEditingController();
+    final targetController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Savings Goal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
+              const SizedBox(height: 12),
+              TextField(controller: targetController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target Amount')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final t = titleController.text.trim();
+                final target = double.tryParse(targetController.text) ?? 50000.0;
+                if (t.isNotEmpty) {
+                  Navigator.pop(context);
+                  setState(() {
+                    _goals.add({
+                      'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
+                      'title': t,
+                      'target': target,
+                      'current': 0.0,
+                      'monthly_contrib': 10000.0,
+                      'icon': Icons.stars,
+                      'color': Colors.purple,
+                    });
+                  });
+                }
+              },
+              child: const Text('Create Goal'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // ----------------------------------------------------
-  // 5. SETTINGS TAB
+  // 5. SETTINGS TAB (With PRO Upgrade Banner)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
+        // PRO Membership Status Banner
+        Card(
+          color: _isProUser ? Colors.amber[50] : Colors.blue[50],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ListTile(
+            leading: Icon(_isProUser ? Icons.stars : Icons.star_border, color: Colors.amber, size: 32),
+            title: Text(_isProUser ? 'FinanceFlow PRO Active' : 'Upgrade to FinanceFlow PRO', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(_isProUser ? 'Unlimited wallets, goals, and AI time machine unlocked' : 'Unlock unlimited accounts, goals & predictive tools'),
+            trailing: _isProUser ? const Icon(Icons.check_circle, color: Colors.green) : ElevatedButton(onPressed: () => _showProUpgradeModal('PRO Features'), child: const Text('Upgrade')),
+          ),
+        ),
+        const SizedBox(height: 16),
+
         const Text('Preferences & Customization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
