@@ -47,38 +47,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Category Icon Palette
   final List<String> _categoryIcons = ['🍔', '🚗', '⚡', '🛒', '💰', '🏥', '🍿', '🏋️', '🐶', '🎁', '✈️', '🎓', '🎮', '☕'];
 
-  // Dynamic Goals List with Deposit & Change History
-  final List<Map<String, dynamic>> _goals = [
-    {
-      'id': 'g-1',
-      'title': 'New Phone',
-      'target': 150000.0,
-      'current': 90000.0,
-      'deposits_count': 4,
-      'last_deposit_amount': 15000.0,
-      'icon': Icons.phone_iphone,
-      'color': Colors.blue,
-      'history': [
-        {'type': 'deposit', 'amount': 15000.0, 'date': '2026-07-28 14:20', 'notes': 'Saved from monthly paycheck'},
-        {'type': 'deposit', 'amount': 25000.0, 'date': '2026-07-20 10:15', 'notes': 'Bonus deposit'},
-        {'type': 'target_change', 'amount': 150000.0, 'date': '2026-07-15 09:00', 'notes': 'Target set to 150,000'},
-      ]
-    },
-    {
-      'id': 'g-2',
-      'title': 'Emergency Fund',
-      'target': 300000.0,
-      'current': 210000.0,
-      'deposits_count': 6,
-      'last_deposit_amount': 20000.0,
-      'icon': Icons.shield,
-      'color': Colors.green,
-      'history': [
-        {'type': 'deposit', 'amount': 20000.0, 'date': '2026-07-25 18:40', 'notes': 'Emergency fund deposit'},
-        {'type': 'deposit', 'amount': 50000.0, 'date': '2026-07-10 11:30', 'notes': 'Initial allocation'},
-      ]
-    },
-  ];
+  // Dynamic Goals List starts EMPTY for new users
+  final List<Map<String, dynamic>> _goals = [];
 
   @override
   void initState() {
@@ -405,30 +375,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Top Savings Goals Overview
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Top Savings Goals', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: () => setState(() => _currentTab = 3), child: const Text('View All')),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Column(
-            children: _goals.take(2).map((g) {
-              final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                child: ListTile(
-                  leading: CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
-                  title: Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  subtitle: Text('Saved: $_preferredCurrency ${g['current']} / ${g['target']}', style: const TextStyle(fontSize: 11)),
-                  trailing: Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
+          // Top Savings Goals Overview (Only shown if goals exist!)
+          if (_goals.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Top Savings Goals', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                TextButton(onPressed: () => setState(() => _currentTab = 3), child: const Text('View All')),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Column(
+              children: _goals.take(2).map((g) {
+                final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    leading: CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                    title: Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    subtitle: Text('Saved: $_preferredCurrency ${g['current']} / ${g['target']}', style: const TextStyle(fontSize: 11)),
+                    trailing: Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
+                  ),
+                );
+              }).toList(),
+            ),
+          ] else ...[
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    CircleAvatar(backgroundColor: Colors.blue[50], child: const Icon(Icons.track_changes, color: Colors.blue)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Set a Savings Goal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text('Create target goals to track savings velocity.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _currentTab = 3),
+                      child: const Text('Add Goal'),
+                    ),
+                  ],
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -712,7 +710,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (Clean Read-Only Overview)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -1017,7 +1015,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB
+  // 4. GOALS TAB (Starts 100% Empty for New Installations)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1037,82 +1035,110 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          ..._goals.map((g) {
-            final target = (g['target'] as double);
-            final current = (g['current'] as double);
-            final pct = (current / target).clamp(0.0, 1.0);
-            final remaining = (target - current).clamp(0.0, double.infinity);
-
-            final depositsCount = (g['deposits_count'] as int? ?? 1);
-            final lastAmount = (g['last_deposit_amount'] as double? ?? 15000.0);
-
-            String velocityStr;
-            if (depositsCount >= 5) {
-              final estDays = (remaining / (lastAmount / 5.0)).ceil().clamp(1, 999);
-              velocityStr = '🚀 High Regularity: Completed in ~$estDays days!';
-            } else {
-              final months = (remaining / lastAmount).ceil().clamp(1, 48);
-              velocityStr = '⏱️ Regularity: Est. completion in ~$months months';
-            }
-
-            return GestureDetector(
-              onTap: () => _showGoalDetailModal(g),
-              child: Card(
-                margin: const EdgeInsets.only(bottom: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                            onPressed: () => _showEditGoalModal(g),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: pct,
-                          minHeight: 8,
-                          backgroundColor: Colors.grey[200],
-                          valueColor: AlwaysStoppedAnimation<Color>(g['color']),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                            onPressed: () => _showDepositToGoalModal(g),
-                            icon: const Icon(Icons.add, size: 14),
-                            label: const Text('Deposit', style: TextStyle(fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          if (_goals.isEmpty) ...[
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
+                child: Column(
+                  children: [
+                    Icon(Icons.track_changes, size: 64, color: Colors.blue[300]),
+                    const SizedBox(height: 16),
+                    const Text('No Savings Goals Added Yet!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tap "Add Goal" above to create your first financial target (e.g. New Phone, Car Deposit, Emergency Fund).',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                      onPressed: _showAddGoalModal,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text('Create First Goal', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
                 ),
               ),
-            );
-          }),
+            ),
+          ] else ...[
+            ..._goals.map((g) {
+              final target = (g['target'] as double);
+              final current = (g['current'] as double);
+              final pct = (current / target).clamp(0.0, 1.0);
+              final remaining = (target - current).clamp(0.0, double.infinity);
+
+              final depositsCount = (g['deposits_count'] as int? ?? 1);
+              final lastAmount = (g['last_deposit_amount'] as double? ?? 15000.0);
+
+              String velocityStr;
+              if (depositsCount >= 5) {
+                final estDays = (remaining / (lastAmount / 5.0)).ceil().clamp(1, 999);
+                velocityStr = '🚀 High Regularity: Completed in ~$estDays days!';
+              } else {
+                final months = (remaining / lastAmount).ceil().clamp(1, 48);
+                velocityStr = '⏱️ Regularity: Est. completion in ~$months months';
+              }
+
+              return GestureDetector(
+                onTap: () => _showGoalDetailModal(g),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                              onPressed: () => _showEditGoalModal(g),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: pct,
+                            minHeight: 8,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: AlwaysStoppedAnimation<Color>(g['color']),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                              onPressed: () => _showDepositToGoalModal(g),
+                              icon: const Icon(Icons.add, size: 14),
+                              label: const Text('Deposit', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
