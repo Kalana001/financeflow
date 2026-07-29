@@ -24,7 +24,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _accounts = [];
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
-  bool _isProUser = false; // PRO Membership State
   String _searchQuery = '';
   String _filterCategory = 'All';
 
@@ -32,7 +31,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _simpleMode = false;
   String _preferredCurrency = 'LKR';
   double _targetMonthlyBudget = 100000.0;
-  double _whatIfCutPct = 20.0; // What-If Simulator State
+  double _whatIfCutPct = 20.0;
   Color _themeColor = const Color(0xFF2563EB);
 
   // High Value OTP Prompt State
@@ -42,10 +41,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Icon Choices for Custom Wallets
   final List<String> _walletIcons = ['💵', '🏦', '💳', '📱', '🐖', '💎', '🛒', '⚡'];
 
-  // Goals List
+  // Dynamic Goals List with Deposit History
   final List<Map<String, dynamic>> _goals = [
-    {'id': 'g-1', 'title': 'New Phone', 'target': 150000.0, 'current': 90000.0, 'monthly_contrib': 15000.0, 'icon': Icons.phone_iphone, 'color': Colors.blue},
-    {'id': 'g-2', 'title': 'Emergency Fund', 'target': 300000.0, 'current': 210000.0, 'monthly_contrib': 20000.0, 'icon': Icons.shield, 'color': Colors.green},
+    {
+      'id': 'g-1',
+      'title': 'New Phone',
+      'target': 150000.0,
+      'current': 90000.0,
+      'deposits_count': 4,
+      'last_deposit_amount': 15000.0,
+      'icon': Icons.phone_iphone,
+      'color': Colors.blue
+    },
+    {
+      'id': 'g-2',
+      'title': 'Emergency Fund',
+      'target': 300000.0,
+      'current': 210000.0,
+      'deposits_count': 6,
+      'last_deposit_amount': 20000.0,
+      'icon': Icons.shield,
+      'color': Colors.green
+    },
   ];
 
   @override
@@ -66,7 +83,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _simpleMode = prof['simple_mode'] == true;
-        _isProUser = prof['is_pro'] == true;
         _targetMonthlyBudget = (double.tryParse(prof['monthly_budget'].toString()) ?? 100000.0);
       });
     } catch (e) {
@@ -168,81 +184,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // 👑 PRO PAYWALL SUBSCRIPTION DIALOG (Monetization Hook)
-  void _showProUpgradeModal(String featureName) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.amber[100], shape: BoxShape.circle),
-                child: const Icon(Icons.star, color: Colors.amber, size: 40),
-              ),
-              const SizedBox(height: 12),
-              const Text('Unlock FinanceFlow PRO', style: TextStyle(fontFamily: 'Outfit', fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text(
-                'You reached the free limit for $featureName. Upgrade to PRO for unlimited access!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-
-              _buildProFeatureRow(Icons.account_balance_wallet, 'Unlimited Accounts & Wallets'),
-              _buildProFeatureRow(Icons.track_changes, 'Unlimited Savings Goals & ETA Calculator'),
-              _buildProFeatureRow(Icons.psychology, 'AI "What-If" Predictive Time Machine'),
-              _buildProFeatureRow(Icons.file_download, 'PDF & CSV Financial Statement Export'),
-
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () async {
-                  Navigator.pop(context);
-                  setState(() => _isProUser = true);
-                  await widget.storageService.updateProfileField('is_pro', true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('🎉 Congratulations! You are now a FinanceFlow PRO member!')),
-                  );
-                },
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Upgrade to PRO (LKR 490 / Month)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProFeatureRow(IconData icon, String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF2563EB)),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -272,18 +213,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
-            const SizedBox(width: 8),
-            if (_isProUser)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(10)),
-                child: const Text('PRO', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
-              ),
-          ],
-        ),
+        title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -345,7 +275,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Redesigned Modern Total Net Worth Card
+          // Total Net Worth Card
           Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
@@ -385,19 +315,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Accounts & Wallets Section (With Freemium Limit Interceptor)
+          // Accounts & Wallets Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('My Accounts & Wallets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               TextButton.icon(
-                onPressed: () {
-                  if (!_isProUser && _accounts.length >= 3) {
-                    _showProUpgradeModal('Accounts & Wallets');
-                  } else {
-                    _showAddAccountModal();
-                  }
-                },
+                onPressed: _showAddAccountModal,
                 icon: const Icon(Icons.add_card, size: 16),
                 label: const Text('Add Wallet'),
               ),
@@ -741,10 +665,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. UNIQUE ANALYTICS (With Empty State Guard & What-If Simulator)
+  // 3. ANALYTICS TAB (With Empty State Guard)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
-    // Empty state guard for new users with zero transactions
     if (_transactions.isEmpty) {
       return Center(
         child: Padding(
@@ -777,11 +700,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dailyAvg = _totalExpense > 0 ? (_totalExpense / 30.0) : 0.0;
     final healthScore = _totalIncome > 0 ? (((_totalIncome - _totalExpense) / _totalIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     
-    // Emergency Financial Runway (Months of survival)
     final monthlyExpense = _totalExpense > 0 ? _totalExpense : 25000.0;
     final runwayMonths = (_totalNetWorth / monthlyExpense).clamp(0.0, 99.0);
 
-    // Projected What-If Savings calculation
     final foodExpenses = _transactions.where((t) => t['category'] == 'Food' && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
     final sixMonthSavings = (foodExpenses * (_whatIfCutPct / 100.0)) * 6;
 
@@ -908,7 +829,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (With Goal Velocity ETA Calculator & Freemium Limits)
+  // 4. GOALS TAB (With Editable Name, Target & Deposit Progress)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -921,13 +842,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text('Financial Goals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                onPressed: () {
-                  if (!_isProUser && _goals.length >= 2) {
-                    _showProUpgradeModal('Financial Goals');
-                  } else {
-                    _showAddGoalModal();
-                  }
-                },
+                onPressed: _showAddGoalModal,
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Add Goal'),
               )
@@ -935,13 +850,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
           ..._goals.map((g) {
-            final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
-            final remaining = (g['target'] - g['current']).clamp(0.0, double.infinity);
-            final monthlyContrib = (g['monthly_contrib'] ?? 15000.0);
-            final monthsLeft = (remaining / monthlyContrib).ceil();
+            final target = (g['target'] as double);
+            final current = (g['current'] as double);
+            final pct = (current / target).clamp(0.0, 1.0);
+            final remaining = (target - current).clamp(0.0, double.infinity);
+
+            final depositsCount = (g['deposits_count'] as int? ?? 1);
+            final lastAmount = (g['last_deposit_amount'] as double? ?? 15000.0);
+
+            // Adaptive Velocity Calculation
+            String velocityStr;
+            if (depositsCount >= 5) {
+              final estDays = (remaining / (lastAmount / 5.0)).ceil().clamp(1, 999);
+              velocityStr = '🚀 High Regularity: Completed in ~$estDays days!';
+            } else {
+              final months = (remaining / lastAmount).ceil().clamp(1, 48);
+              velocityStr = '⏱️ Regularity: Est. completion in ~$months months';
+            }
 
             return Card(
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -957,19 +885,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              Text('Target: $_preferredCurrency ${g['target']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                              Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                             ],
                           ),
                         ),
-                        Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                          onPressed: () => _showEditGoalModal(g),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(g['color'])),
-                    const SizedBox(height: 8),
-                    Text(
-                      '⏱️ Real-time Velocity: Est. completion in $monthsLeft months',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: AlwaysStoppedAnimation<Color>(g['color']),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                          onPressed: () => _showDepositToGoalModal(g),
+                          icon: const Icon(Icons.add, size: 14),
+                          label: const Text('Deposit', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -978,6 +925,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }),
         ],
       ),
+    );
+  }
+
+  void _showDepositToGoalModal(Map<String, dynamic> goal) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Deposit to "${goal['title']}"'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Deposit Amount (e.g. 5000)'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final amt = double.tryParse(controller.text) ?? 0.0;
+                if (amt > 0) {
+                  Navigator.pop(context);
+                  setState(() {
+                    goal['current'] = (goal['current'] as double) + amt;
+                    goal['deposits_count'] = (goal['deposits_count'] as int? ?? 1) + 1;
+                    goal['last_deposit_amount'] = amt;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('🎉 Deposited $_preferredCurrency $amt into ${goal['title']}!')),
+                  );
+                }
+              },
+              child: const Text('Save Deposit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditGoalModal(Map<String, dynamic> goal) {
+    final titleController = TextEditingController(text: goal['title']);
+    final targetController = TextEditingController(text: (goal['target'] as double).toStringAsFixed(0));
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Goal Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title')),
+              const SizedBox(height: 12),
+              TextField(controller: targetController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Target Amount')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final t = titleController.text.trim();
+                final target = double.tryParse(targetController.text) ?? 50000.0;
+                if (t.isNotEmpty) {
+                  Navigator.pop(context);
+                  setState(() {
+                    goal['title'] = t;
+                    goal['target'] = target;
+                  });
+                }
+              },
+              child: const Text('Update Goal'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1012,7 +1035,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'title': t,
                       'target': target,
                       'current': 0.0,
-                      'monthly_contrib': 10000.0,
+                      'deposits_count': 1,
+                      'last_deposit_amount': 10000.0,
                       'icon': Icons.stars,
                       'color': Colors.purple,
                     });
@@ -1028,25 +1052,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (With PRO Upgrade Banner)
+  // 5. SETTINGS TAB
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        // PRO Membership Status Banner
-        Card(
-          color: _isProUser ? Colors.amber[50] : Colors.blue[50],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: ListTile(
-            leading: Icon(_isProUser ? Icons.stars : Icons.star_border, color: Colors.amber, size: 32),
-            title: Text(_isProUser ? 'FinanceFlow PRO Active' : 'Upgrade to FinanceFlow PRO', style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(_isProUser ? 'Unlimited wallets, goals, and AI time machine unlocked' : 'Unlock unlimited accounts, goals & predictive tools'),
-            trailing: _isProUser ? const Icon(Icons.check_circle, color: Colors.green) : ElevatedButton(onPressed: () => _showProUpgradeModal('PRO Features'), child: const Text('Upgrade')),
-          ),
-        ),
-        const SizedBox(height: 16),
-
         const Text('Preferences & Customization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
@@ -1221,7 +1232,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     decoration: const InputDecoration(labelText: 'Transaction Type'),
                   ),
                   const SizedBox(height: 12),
-                  // Wallet Destination / Source Selector
                   DropdownButtonFormField<String>(
                     value: selectedAccount,
                     items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
