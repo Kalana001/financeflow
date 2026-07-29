@@ -276,7 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     '$_preferredCurrency ${_totalNetWorth.toStringAsFixed(2)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.extrabold),
+                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
                   ),
                 ),
                 const SizedBox(height: 18),
