@@ -5,9 +5,10 @@ class LocalStorageService {
   static const String _keyProfile = 'ff_profile';
   static const String _keyTransactions = 'ff_transactions';
   static const String _keyAccounts = 'ff_accounts';
+  static const String _keyCategories = 'ff_categories';
 
   // ----------------------------------------------------
-  // PROFILE & SETUP MANAGEMENT (Profile Name Only)
+  // PROFILE & SETUP MANAGEMENT
   // ----------------------------------------------------
   Future<Map<String, dynamic>?> getProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,7 +38,7 @@ class LocalStorageService {
   }
 
   // ----------------------------------------------------
-  // ACCOUNTS & WALLETS MANAGEMENT (Editable Name, Opening Balance & Icons)
+  // ACCOUNTS & WALLETS MANAGEMENT
   // ----------------------------------------------------
   Future<List<Map<String, dynamic>>> getAccounts() async {
     final prefs = await SharedPreferences.getInstance();
@@ -100,6 +101,40 @@ class LocalStorageService {
   }
 
   // ----------------------------------------------------
+  // CUSTOM CATEGORIES MANAGEMENT
+  // ----------------------------------------------------
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_keyCategories);
+    if (str == null) {
+      final defaultCategories = [
+        {'name': 'Food & Dining', 'icon': '🍔'},
+        {'name': 'Transport & Fuel', 'icon': '🚗'},
+        {'name': 'Bills & Utilities', 'icon': '⚡'},
+        {'name': 'Shopping & Store', 'icon': '🛒'},
+        {'name': 'Salary & Income', 'icon': '💰'},
+        {'name': 'Medical & Health', 'icon': '🏥'},
+        {'name': 'Entertainment', 'icon': '🍿'},
+      ];
+      await prefs.setString(_keyCategories, jsonEncode(defaultCategories));
+      return defaultCategories;
+    }
+    try {
+      final List raw = jsonDecode(str);
+      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> addCategory(Map<String, dynamic> cat) async {
+    final cats = await getCategories();
+    cats.add(cat);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCategories, jsonEncode(cats));
+  }
+
+  // ----------------------------------------------------
   // TRANSACTIONS CRUD
   // ----------------------------------------------------
   Future<List<Map<String, dynamic>>> getTransactions() async {
@@ -156,10 +191,12 @@ class LocalStorageService {
     final prof = await getProfile();
     final txs = await getTransactions();
     final accs = await getAccounts();
+    final cats = await getCategories();
     final dump = {
       'exported_at': DateTime.now().toIso8601String(),
       'profile': prof,
       'accounts': accs,
+      'categories': cats,
       'transactions': txs,
     };
     return jsonEncode(dump);

@@ -23,6 +23,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentTab = 0;
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _accounts = [];
+  List<Map<String, dynamic>> _categories = [];
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
   String _searchQuery = '';
@@ -42,6 +43,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Icon Choices for Custom Wallets
   final List<String> _walletIcons = ['💵', '🏦', '💳', '📱', '🐖', '💎', '🛒', '⚡'];
+
+  // Category Icon Palette
+  final List<String> _categoryIcons = ['🍔', '🚗', '⚡', '🛒', '💰', '🏥', '🍿', '🏋️', '🐶', '🎁', '✈️', '🎓', '🎮', '☕'];
 
   // Dynamic Goals List with Deposit & Change History
   final List<Map<String, dynamic>> _goals = [
@@ -87,10 +91,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final txs = await widget.storageService.getTransactions();
       final accs = await widget.storageService.getAccounts();
+      final cats = await widget.storageService.getCategories();
       final prof = (await widget.storageService.getProfile()) ?? {};
       setState(() {
         _transactions = txs;
         _accounts = accs;
+        _categories = cats;
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _simpleMode = prof['simple_mode'] == true;
@@ -257,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB
+  // 1. HOME TAB (Sleek Professional Wealth Overview)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -399,15 +405,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Recent Activity
+          // 🎯 Top Savings Goals Overview (Replaces Recent Activity on Home)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Recent Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: () => setState(() => _currentTab = 1), child: const Text('See All')),
+              const Text('Top Savings Goals', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: () => setState(() => _currentTab = 3), child: const Text('View All')),
             ],
           ),
-          _buildTransactionList(_transactions.take(4).toList()),
+          const SizedBox(height: 6),
+          Column(
+            children: _goals.take(2).map((g) {
+              final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: ListTile(
+                  leading: CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                  title: Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  subtitle: Text('Saved: $_preferredCurrency ${g['current']} / ${g['target']}', style: const TextStyle(fontSize: 11)),
+                  trailing: Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
@@ -638,7 +659,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB
+  // 2. TRANSACTIONS TAB (History)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _transactions.where((tx) {
@@ -668,13 +689,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Row(
                   children: [
                     'All',
-                    '🍔 Food',
-                    '🚗 Transport',
-                    '⚡ Bills',
-                    '🛒 Shopping',
-                    '💰 Salary',
-                    '🏥 Medical',
-                    '🍿 Entertainment',
+                    ..._categories.map((c) => '${c['icon']} ${c['name']}'),
                   ].map((cat) {
                     final selected = _filterCategory == cat || (_filterCategory == 'Food' && cat.contains('Food'));
                     return Padding(
@@ -697,7 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Pie/Donut Chart & Cashflow Charts)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -857,8 +872,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 🥧 Category Spending Donut Chart & Breakdown
-          const Text('Category Spending Distribution Donut Chart', style: TextStyle(fontWeight: FontWeight.bold)),
+          // 🥧 Category Spending Donut Chart & Custom Category Manager
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Category Spending Distribution', style: TextStyle(fontWeight: FontWeight.bold)),
+              TextButton.icon(
+                onPressed: _showAddCategoryModal,
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Add Category', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -866,7 +891,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Donut Visual Ring
                   Container(
                     width: 140,
                     height: 140,
@@ -884,13 +908,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildCategoryProgressRow('🍔 Food & Dining', _getCategoryPct('Food'), Colors.orange),
-                  const SizedBox(height: 10),
-                  _buildCategoryProgressRow('🚗 Transport & Fuel', _getCategoryPct('Transport'), Colors.blue),
-                  const SizedBox(height: 10),
-                  _buildCategoryProgressRow('⚡ Bills & Utilities', _getCategoryPct('Bills'), Colors.red),
-                  const SizedBox(height: 10),
-                  _buildCategoryProgressRow('🛒 Shopping & Store', _getCategoryPct('Shopping'), Colors.purple),
+                  ..._categories.map((cat) {
+                    final catName = cat['name'].toString().split(' ').first;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: _buildCategoryProgressRow('${cat['icon']} ${cat['name']}', _getCategoryPct(catName), Colors.orange),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -902,7 +926,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double _getCategoryPct(String cat) {
     if (_totalExpense == 0) return 0.0;
-    final catExp = _transactions.where((t) => t['category'] == cat && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    final catExp = _transactions.where((t) => t['category'].toString().toLowerCase().contains(cat.toLowerCase()) && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
     return (catExp / _totalExpense).clamp(0.0, 1.0);
   }
 
@@ -945,6 +969,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 4),
         LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(color)),
       ],
+    );
+  }
+
+  // Modal to Add Custom Expense Category
+  void _showAddCategoryModal() {
+    final nameController = TextEditingController();
+    String selectedIcon = '🍔';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Add Custom Category'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Category Name (e.g. Gym)')),
+                  const SizedBox(height: 12),
+                  const Text('Select Category Icon:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categoryIcons.map((ic) {
+                      return ChoiceChip(
+                        label: Text(ic, style: const TextStyle(fontSize: 18)),
+                        selected: selectedIcon == ic,
+                        onSelected: (_) => setModalState(() => selectedIcon = ic),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final n = nameController.text.trim();
+                    if (n.isNotEmpty) {
+                      Navigator.pop(context);
+                      await widget.storageService.addCategory({
+                        'name': n,
+                        'icon': selectedIcon,
+                      });
+                      _loadData();
+                    }
+                  },
+                  child: const Text('Create Category'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1400,7 +1480,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final amountController = TextEditingController();
     final noteController = TextEditingController();
     final locationController = TextEditingController();
-    String category = 'Food';
+    String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food';
     String type = 'expense';
     String selectedAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
 
@@ -1450,16 +1530,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: category,
-                    items: const [
-                      DropdownMenuItem(value: 'Food', child: Text('🍔 Food & Dining')),
-                      DropdownMenuItem(value: 'Transport', child: Text('🚗 Transport & Fuel')),
-                      DropdownMenuItem(value: 'Salary', child: Text('💰 Salary & Income')),
-                      DropdownMenuItem(value: 'Bills', child: Text('⚡ Bills & Utilities')),
-                      DropdownMenuItem(value: 'Shopping', child: Text('🛒 Shopping & Store')),
-                      DropdownMenuItem(value: 'Medical', child: Text('🏥 Medical & Health')),
-                      DropdownMenuItem(value: 'Entertainment', child: Text('🍿 Entertainment')),
-                    ],
-                    onChanged: (val) => setModalState(() => category = val ?? 'Food'),
+                    items: _categories.map((c) {
+                      return DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'));
+                    }).toList(),
+                    onChanged: (val) => setModalState(() => category = val ?? category),
                     decoration: const InputDecoration(labelText: 'Category'),
                   ),
                   const SizedBox(height: 12),
