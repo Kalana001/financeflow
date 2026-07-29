@@ -191,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.between,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('🟢 Income: $currency $_totalIncome', style: const TextStyle(color: Colors.white, fontSize: 12)),
                       Text('🔴 Expense: $currency $_totalExpense', style: const TextStyle(color: Colors.white, fontSize: 12)),
