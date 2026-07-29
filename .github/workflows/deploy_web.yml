@@ -1,0 +1,59 @@
+name: Deploy Flutter Web App to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Java
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Setup Flutter
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+
+      # 4. Generate clean web platform files
+      - name: Reconstruct Web Platform
+        run: flutter create . --overwrite --org com.example
+
+      # 5. Restore custom Flutter app source code
+      - name: Restore Custom Source Code
+        run: |
+          git checkout lib/
+          git checkout pubspec.yaml
+
+      # 6. Install dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 7. Build Flutter Web Release
+      - name: Build Flutter Web App
+        run: flutter build web --release --base-href /financeflow/
+
+      # 8. Deploy compiled web app to GitHub Pages branch (gh-pages)
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: build/web
+          branch: gh-pages
