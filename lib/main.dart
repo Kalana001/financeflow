@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'services/local_storage_service.dart';
 import 'screens/setup_screen.dart';
-import 'screens/pin_lock_screen.dart';
 import 'screens/dashboard.dart';
 
 void main() async {
@@ -23,7 +22,6 @@ class FinanceFlowApp extends StatefulWidget {
 
 class _FinanceFlowAppState extends State<FinanceFlowApp> with WidgetsBindingObserver {
   bool _isAppBlurred = false;
-  bool _isUnlocked = false;
   bool _isSetup = false;
   bool _isCheckingSetup = true;
 
@@ -76,16 +74,6 @@ class _FinanceFlowAppState extends State<FinanceFlowApp> with WidgetsBindingObse
         onSetupComplete: () {
           setState(() {
             _isSetup = true;
-            _isUnlocked = true;
-          });
-        },
-      );
-    } else if (!_isUnlocked) {
-      activeScreen = PinLockScreen(
-        storageService: widget.storageService,
-        onUnlocked: () {
-          setState(() {
-            _isUnlocked = true;
           });
         },
       );
@@ -93,14 +81,12 @@ class _FinanceFlowAppState extends State<FinanceFlowApp> with WidgetsBindingObse
       activeScreen = DashboardScreen(
         storageService: widget.storageService,
         onLockRequested: () {
-          setState(() {
-            _isUnlocked = false;
-          });
+          // Refresh state
+          _checkSetupState();
         },
         onResetRequested: () {
           setState(() {
             _isSetup = false;
-            _isUnlocked = false;
           });
         },
       );

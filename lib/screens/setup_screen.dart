@@ -17,32 +17,25 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   final _nameController = TextEditingController();
-  final _pinController = TextEditingController();
-  bool _enableBiometrics = false;
+  final _budgetController = TextEditingController(text: '100000');
   String _selectedCurrency = 'LKR';
   String? _errorMessage;
 
   Future<void> _completeSetup() async {
     final name = _nameController.text.trim();
-    final pin = _pinController.text.trim();
+    final targetBudget = double.tryParse(_budgetController.text) ?? 100000.0;
 
     if (name.isEmpty) {
       setState(() => _errorMessage = 'Please enter your Profile Name.');
       return;
     }
 
-    if (pin.length != 4 || int.tryParse(pin) == null) {
-      setState(() => _errorMessage = 'Please enter a 4-digit numeric PIN.');
-      return;
-    }
-
     final profileData = {
       'name': name,
-      'pin': pin,
       'currency': _selectedCurrency,
+      'monthly_budget': targetBudget,
       'theme_preference': 'classic-blue',
       'simple_mode': false,
-      'biometrics_enabled': _enableBiometrics,
       'created_at': DateTime.now().toIso8601String(),
     };
 
@@ -59,21 +52,21 @@ class _SetupScreenState extends State<SetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 40),
-              const Icon(Icons.account_balance_wallet, size: 64, color: Color(0xFF2563EB)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 50),
+              const Icon(Icons.account_balance_wallet_rounded, size: 72, color: Color(0xFF2563EB)),
+              const SizedBox(height: 20),
               const Text(
                 'Welcome to FinanceFlow',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Outfit', fontSize: 26, fontWeight: FontWeight.bold),
+                style: TextStyle(fontFamily: 'Outfit', fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Set up your profile & PIN to secure your wealth tracker. No online passwords required.',
+                'Enter your profile name to start tracking your private finances.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.grey),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 40),
 
               if (_errorMessage != null)
                 Container(
@@ -99,20 +92,18 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Security PIN Input
+              // Monthly Target Budget Input
               TextField(
-                controller: _pinController,
+                controller: _budgetController,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
-                obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Set 4-Digit Security PIN',
-                  hintText: 'e.g. 1234',
-                  prefixIcon: Icon(Icons.lock),
+                  labelText: 'Monthly Target Budget',
+                  hintText: '100000',
+                  prefixIcon: Icon(Icons.track_changes),
                   border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               // Preferred Currency Dropdown
               DropdownButtonFormField<String>(
@@ -127,20 +118,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     .toList(),
                 onChanged: (val) => setState(() => _selectedCurrency = val ?? 'LKR'),
               ),
-              const SizedBox(height: 16),
-
-              // Fingerprint Biometrics Switch
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: SwitchListTile(
-                  title: const Text('Enable Fingerprint Lock'),
-                  subtitle: const Text('Use biometrics to unlock quickly'),
-                  value: _enableBiometrics,
-                  activeColor: const Color(0xFF2563EB),
-                  onChanged: (val) => setState(() => _enableBiometrics = val),
-                ),
-              ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
 
               // Create Button
               ElevatedButton(
@@ -150,7 +128,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Create Profile & Get Started', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text('Start Tracking Wealth', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
