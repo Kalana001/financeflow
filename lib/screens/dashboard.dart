@@ -21,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentTab = 0;
   List<Map<String, dynamic>> _transactions = [];
+  List<Map<String, dynamic>> _accounts = [];
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
   String _searchQuery = '';
@@ -52,9 +53,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final txs = await widget.storageService.getTransactions();
+      final accs = await widget.storageService.getAccounts();
       final prof = (await widget.storageService.getProfile()) ?? {};
       setState(() {
         _transactions = txs;
+        _accounts = accs;
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _simpleMode = prof['simple_mode'] == true;
@@ -66,12 +69,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _addTransaction(double amount, String category, String type, String notes, String location) async {
+  // Dynamic Net Worth calculation: Sum of all wallet balances
+  double get _totalNetWorth => _accounts.fold(
+      0.0, (sum, acc) => sum + (double.tryParse(acc['current_balance'].toString()) ?? 0.0));
+
+  double get _totalIncome => _transactions
+      .where((t) => t['type'] == 'income')
+      .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
+  double get _totalExpense => _transactions
+      .where((t) => t['type'] == 'expense')
+      .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
+  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId) async {
     final newTx = {
       'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
       'amount': amount,
       'category': category,
       'type': type,
+      'account_id': accountId,
       'payment_method': 'Cash',
       'date': DateTime.now().toIso8601String().substring(0, 10),
       'notes': notes.isEmpty ? category : notes,
@@ -144,16 +160,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     );
   }
-
-  double get _totalIncome => _transactions
-      .where((t) => t['type'] == 'income')
-      .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
-
-  double get _totalExpense => _transactions
-      .where((t) => t['type'] == 'expense')
-      .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
-
-  double get _balance => _totalIncome - _totalExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +254,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Total Balance Gradient Card
+          // Total Balance Gradient Card (Dynamic Net Worth)
           Card(
             color: _themeColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -257,18 +263,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Total Balance', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const Text('Total Net Worth (Combined Wallets)', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   Text(
-                    '$_preferredCurrency ${_balance.toStringAsFixed(2)}',
+                    '$_preferredCurrency ${_totalNetWorth.toStringAsFixed(2)}',
                     style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('🟢 Income: $_preferredCurrency $_totalIncome', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                      Text('🔴 Expense: $_preferredCurrency $_totalExpense', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('🟢 Total Income: $_preferredCurrency $_totalIncome', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('🔴 Total Expense: $_preferredCurrency $_totalExpense', style: const TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   )
                 ],
@@ -277,44 +283,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Summary Spending Cards
+          // Accounts & Wallets Section
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Today's Spend", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        const SizedBox(height: 4),
-                        Text('$_preferredCurrency ${_totalExpense > 0 ? (_totalExpense * 0.15).toStringAsFixed(0) : '0'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Budget Left", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        const SizedBox(height: 4),
-                        Text('$_preferredCurrency ${(_totalIncome - _totalExpense).clamp(0, double.infinity).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
-                      ],
-                    ),
-                  ),
-                ),
+              const Text('My Accounts & Wallets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              TextButton.icon(
+                onPressed: _showAddAccountModal,
+                icon: const Icon(Icons.add_card, size: 16),
+                label: const Text('Add Wallet'),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _accounts.map((acc) {
+                final balance = (double.tryParse(acc['current_balance'].toString()) ?? 0.0);
+                return _buildAccountCard(acc['id'], acc['name'], balance);
+              }).toList(),
+            ),
+          ),
           const SizedBox(height: 16),
 
-          // Budget Usage Bar
+          // Target Budget Bar
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -339,25 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // If Advanced Mode: Show Accounts & Multi-Wallets
-          if (!_simpleMode) ...[
-            const Text('My Accounts & Wallets', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildWalletChip('💵 Cash', '$_preferredCurrency 15,000', Colors.green),
-                  _buildWalletChip('🏦 Bank Account', '$_preferredCurrency 250,000', Colors.blue),
-                  _buildWalletChip('💳 Credit Card', '$_preferredCurrency 45,000', Colors.purple),
-                  _buildWalletChip('📱 Digital Wallet', '$_preferredCurrency 8,500', Colors.orange),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Recent Transactions List
+          // Recent Activity List
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -371,23 +346,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWalletChip(String name, String balance, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+  Widget _buildAccountCard(String id, String name, double balance) {
+    return GestureDetector(
+      onTap: () => _showAccountDetailModal(id, name, balance),
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[300]!),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text('$_preferredCurrency ${balance.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : Colors.black87)),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 4),
-          Text(balance, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        ],
-      ),
+    );
+  }
+
+  // Account Detail Modal (Transactions by specific Wallet)
+  void _showAccountDetailModal(String id, String name, double balance) {
+    final walletTxs = _transactions.where((t) => t['account_id'] == id || t['account_id'] == name).toList();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Available Balance: $_preferredCurrency ${balance.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, color: balance < 0 ? Colors.red : Colors.green, fontWeight: FontWeight.w600)),
+              const Divider(height: 24),
+              const Text('Transactions for this Wallet:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 10),
+              Expanded(child: _buildTransactionList(walletTxs)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Add Custom Account Modal
+  void _showAddAccountModal() {
+    final nameController = TextEditingController();
+    final balanceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Custom Account / Wallet'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Wallet Name (e.g. Sampath Bank)')),
+              const SizedBox(height: 12),
+              TextField(controller: balanceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Opening Balance')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final bal = double.tryParse(balanceController.text) ?? 0.0;
+                if (name.isNotEmpty) {
+                  Navigator.pop(context);
+                  await widget.storageService.addAccount({
+                    'id': 'acc-${DateTime.now().millisecondsSinceEpoch}',
+                    'name': name,
+                    'type': 'Custom',
+                    'current_balance': bal,
+                    'color': 'blue'
+                  });
+                  _loadData();
+                }
+              },
+              child: const Text('Create Wallet'),
+            )
+          ],
+        );
+      },
     );
   }
 
@@ -501,20 +549,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Monthly Subscriptions Tracker
-          const Text('Monthly Active Subscriptions', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Card(
-            child: Column(
-              children: [
-                ListTile(leading: const Icon(Icons.tv, color: Colors.red), title: const Text('Netflix Standard'), trailing: Text('$_preferredCurrency 2,800/mo')),
-                ListTile(leading: const Icon(Icons.music_note, color: Colors.green), title: const Text('Spotify Family'), trailing: Text('$_preferredCurrency 1,200/mo')),
-                ListTile(leading: const Icon(Icons.wifi, color: Colors.blue), title: const Text('Fibre Internet'), trailing: Text('$_preferredCurrency 4,500/mo')),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -595,7 +629,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS & CUSTOMIZER TAB
+  // 5. SETTINGS TAB
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -604,11 +638,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const Text('Preferences & Customization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
 
-        // Simple vs Advanced Mode Toggle
         Card(
           child: SwitchListTile(
             title: const Text('Simple Beginner Mode'),
-            subtitle: const Text('Hides complex charts and multi-account tools'),
+            subtitle: const Text('Hides complex tools'),
             value: _simpleMode,
             onChanged: (val) {
               setState(() => _simpleMode = val);
@@ -617,7 +650,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
 
-        // Preferred Currency Selector
         Card(
           child: ListTile(
             title: const Text('Preferred Currency'),
@@ -631,29 +663,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   widget.storageService.updateProfileField('currency', val);
                 }
               },
-            ),
-          ),
-        ),
-
-        // Theme Preset Color Pickers
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('App Theme Preset', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildColorPicker(const Color(0xFF2563EB), 'Blue'),
-                    _buildColorPicker(const Color(0xFF10B981), 'Green'),
-                    _buildColorPicker(const Color(0xFF8B5CF6), 'Purple'),
-                    _buildColorPicker(const Color(0xFFF97316), 'Orange'),
-                  ],
-                ),
-              ],
             ),
           ),
         ),
@@ -696,7 +705,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Reset Profile & Data?'),
-                  content: const Text('This will delete your local profile name, PIN, and transactions. This action cannot be undone.'),
+                  content: const Text('This action cannot be undone.'),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
                     TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Reset', style: TextStyle(color: Colors.red))),
@@ -712,24 +721,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildColorPicker(Color color, String name) {
-    final isSelected = _themeColor == color;
-    return GestureDetector(
-      onTap: () => setState(() => _themeColor = color),
-      child: Column(
-        children: [
-          CircleAvatar(
-            backgroundColor: color,
-            radius: 18,
-            child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
-          ),
-          const SizedBox(height: 4),
-          Text(name, style: const TextStyle(fontSize: 10)),
-        ],
-      ),
     );
   }
 
@@ -762,7 +753,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
               ),
               title: Text(tx['notes'] ?? tx['category']),
-              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location']}'),
+              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location'] ?? ''}'),
               trailing: Text(
                 '${isExpense ? '-' : '+'} $_preferredCurrency ${tx['amount']}',
                 style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
@@ -780,6 +771,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final locationController = TextEditingController();
     String category = 'Food';
     String type = 'expense';
+    String selectedAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
 
     showModalBottomSheet(
       context: context,
@@ -787,6 +779,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final isExpense = type == 'expense';
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -798,7 +791,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Add New Transaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(isExpense ? 'Add Expense' : 'Add Income', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   TextField(
                     controller: amountController,
@@ -814,6 +807,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                     onChanged: (val) => setModalState(() => type = val ?? 'expense'),
                     decoration: const InputDecoration(labelText: 'Transaction Type'),
+                  ),
+                  const SizedBox(height: 12),
+                  // Wallet Destination / Source Selector
+                  DropdownButtonFormField<String>(
+                    value: selectedAccount,
+                    items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                    onChanged: (val) => setModalState(() => selectedAccount = val ?? selectedAccount),
+                    decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account'),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -832,21 +833,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   TextField(
                     controller: noteController,
                     decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut or Uber)'),
-                    onChanged: (text) {
-                      final lText = text.toLowerCase();
-                      if (lText.contains('pizza') || lText.contains('food') || lText.contains('kfc')) {
-                        setModalState(() => category = 'Food');
-                      } else if (lText.contains('uber') || lText.contains('cab') || lText.contains('ride')) {
-                        setModalState(() => category = 'Transport');
-                      } else if (lText.contains('electricity') || lText.contains('water') || lText.contains('bill')) {
-                        setModalState(() => category = 'Bills');
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: locationController,
-                    decoration: const InputDecoration(labelText: 'Location (e.g. Colombo 03)'),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -855,7 +841,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       final amt = double.tryParse(amountController.text) ?? 0.0;
                       if (amt > 0) {
                         Navigator.pop(context);
-                        _addTransaction(amt, category, type, noteController.text, locationController.text);
+                        _addTransaction(amt, category, type, noteController.text, locationController.text, selectedAccount);
                       }
                     },
                     child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),

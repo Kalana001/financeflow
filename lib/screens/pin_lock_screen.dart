@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import '../services/local_storage_service.dart';
 
 class PinLockScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class PinLockScreen extends StatefulWidget {
 }
 
 class _PinLockScreenState extends State<PinLockScreen> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
   String _enteredPin = '';
   String _profileName = 'Member';
   String _correctPin = '1234';
@@ -35,6 +37,30 @@ class _PinLockScreenState extends State<PinLockScreen> {
         _correctPin = prof['pin'] ?? '1234';
         _biometricsEnabled = prof['biometrics_enabled'] == true;
       });
+
+      if (_biometricsEnabled) {
+        _triggerBiometricAuth();
+      }
+    }
+  }
+
+  Future<void> _triggerBiometricAuth() async {
+    try {
+      final bool canCheck = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (canCheck) {
+        final bool didAuthenticate = await _localAuth.authenticate(
+          localizedReason: 'Scan your fingerprint to unlock FinanceFlow',
+          options: const AuthenticationOptions(
+            biometricOnly: true,
+            stickyAuth: true,
+          ),
+        );
+        if (didAuthenticate) {
+          widget.onUnlocked();
+        }
+      }
+    } catch (e) {
+      print('Biometric auth notice: $e');
     }
   }
 
@@ -77,7 +103,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Enter your 4-digit PIN to unlock',
+              'Enter 4-digit PIN or scan fingerprint to unlock',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 32),
@@ -137,14 +163,12 @@ class _PinLockScreenState extends State<PinLockScreen> {
                       ),
                       _buildKeyBtn('0'),
                       IconButton(
-                        icon: Icon(
-                          _biometricsEnabled ? Icons.fingerprint : Icons.check_circle_outline,
-                          color: const Color(0xFF2563EB),
+                        icon: const Icon(
+                          Icons.fingerprint,
+                          color: Color(0xFF2563EB),
+                          size: 32,
                         ),
-                        onPressed: () {
-                          // Quick unlock action
-                          widget.onUnlocked();
-                        },
+                        onPressed: _triggerBiometricAuth,
                       ),
                     ],
                   ),
