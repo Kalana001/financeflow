@@ -40,7 +40,24 @@ class SupabaseService {
         .from('profiles')
         .select()
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+
+    if (data == null) {
+      final newProfile = {
+        'id': userId,
+        'name': currentUser?.email?.split('@').first ?? 'Member',
+        'currency': 'LKR',
+        'theme_preference': 'classic-blue',
+        'simple_mode': false,
+      };
+      try {
+        await _client.from('profiles').upsert(newProfile);
+      } catch (e) {
+        print('Profile auto-create notice: $e');
+      }
+      return newProfile;
+    }
+
     return data;
   }
 
