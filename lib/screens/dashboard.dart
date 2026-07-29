@@ -32,6 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _preferredCurrency = 'LKR';
   double _targetMonthlyBudget = 100000.0;
   double _whatIfCutPct = 20.0;
+  String _whatIfCategory = 'Food';
   Color _themeColor = const Color(0xFF2563EB);
 
   // High Value OTP Prompt State
@@ -665,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Empty State Guard)
+  // 3. ANALYTICS TAB (With Category Dropdown & Cashflow Charts)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -703,8 +704,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final monthlyExpense = _totalExpense > 0 ? _totalExpense : 25000.0;
     final runwayMonths = (_totalNetWorth / monthlyExpense).clamp(0.0, 99.0);
 
-    final foodExpenses = _transactions.where((t) => t['category'] == 'Food' && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
-    final sixMonthSavings = (foodExpenses * (_whatIfCutPct / 100.0)) * 6;
+    // Selected Category Expenses for What-If Simulator
+    final selectedCatExpenses = _transactions
+        .where((t) => t['category'] == _whatIfCategory && t['type'] == 'expense')
+        .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
+    final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
+
+    // Cashflow Totals for Bar Chart
+    final totalCashflow = (_totalIncome + _totalExpense) > 0 ? (_totalIncome + _totalExpense) : 1.0;
+    final incomePct = (_totalIncome / totalCashflow).clamp(0.0, 1.0);
+    final expensePct = (_totalExpense / totalCashflow).clamp(0.0, 1.0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -753,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 🔮 AI "What-If" Predictive Simulator Card
+          // 🔮 AI "What-If" Predictive Simulator with Category Dropdown Selector
           Card(
             color: Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -769,8 +779,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text('🔮 AI "What-If" Predictive Simulator', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text('What if I reduce Food expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _whatIfCategory,
+                        items: ['Food', 'Transport', 'Bills', 'Shopping'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _whatIfCategory = val);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text('What if I reduce $_whatIfCategory expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   Slider(
                     value: _whatIfCutPct,
                     min: 0,
@@ -789,25 +813,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ⚖️ 50 / 30 / 20 Financial Rule Ratio Bar
-          const Text('50/30/20 Financial Pillar Allocation', style: TextStyle(fontWeight: FontWeight.bold)),
+          // 📊 Income vs Expense Cashflow Comparison Bar Chart
+          const Text('Income vs Expense Cashflow Ratio', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildBarChartRow('🟢 Income Cashflow', incomePct, Colors.green, '$_preferredCurrency ${_totalIncome.toStringAsFixed(0)}'),
+                  const SizedBox(height: 12),
+                  _buildBarChartRow('🔴 Expense Outflow', expensePct, Colors.red, '$_preferredCurrency ${_totalExpense.toStringAsFixed(0)}'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 📈 Category Spending Breakdown Bars
+          const Text('Category Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildCategoryProgressRow('🏠 Needs (Rent/Bills)', 0.50, Colors.blue),
+                  _buildCategoryProgressRow('🍔 Food', _getCategoryPct('Food'), Colors.orange),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('🍕 Wants (Dining/Movies)', 0.30, Colors.orange),
+                  _buildCategoryProgressRow('🚗 Transport', _getCategoryPct('Transport'), Colors.blue),
                   const SizedBox(height: 12),
-                  _buildCategoryProgressRow('💎 Savings/Assets', 0.20, Colors.green),
+                  _buildCategoryProgressRow('⚡ Bills', _getCategoryPct('Bills'), Colors.red),
+                  const SizedBox(height: 12),
+                  _buildCategoryProgressRow('🛒 Shopping', _getCategoryPct('Shopping'), Colors.purple),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  double _getCategoryPct(String cat) {
+    if (_totalExpense == 0) return 0.0;
+    final catExp = _transactions.where((t) => t['category'] == cat && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    return (catExp / _totalExpense).clamp(0.0, 1.0);
+  }
+
+  Widget _buildBarChartRow(String label, double pct, Color color, String amountStr) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            Text(amountStr, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: pct,
+            minHeight: 10,
+            backgroundColor: Colors.grey[200],
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
     );
   }
 
@@ -829,7 +904,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (With Editable Name, Target & Deposit Progress)
+  // 4. GOALS TAB
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
