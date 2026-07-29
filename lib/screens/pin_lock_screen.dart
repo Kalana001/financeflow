@@ -103,7 +103,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
 
             // Keypad Grid
             Container(
-              maxWidth: 260,
+              constraints: const BoxConstraints(maxWidth: 260),
               alignment: Alignment.center,
               child: Column(
                 children: [
