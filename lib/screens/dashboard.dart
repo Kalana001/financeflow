@@ -16,10 +16,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _transactions = [];
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
+  String _searchQuery = '';
+  String _filterCategory = 'All';
 
-  // Local state to simulate high value OTP prompt
+  // Local Preferences
+  bool _simpleMode = false;
+  bool _isDarkMode = false;
+  String _preferredCurrency = 'LKR';
+  Color _themeColor = const Color(0xFF2563EB);
+
+  // High Value OTP Prompt State
   Map<String, dynamic>? _pendingHighValueTx;
   final _otpController = TextEditingController();
+
+  // Goals Mock Data
+  final List<Map<String, dynamic>> _goals = [
+    {'title': 'New Phone', 'target': 150000.0, 'current': 90000.0, 'icon': Icons.phone_iphone, 'color': Colors.blue},
+    {'title': 'Emergency Fund', 'target': 300000.0, 'current': 210000.0, 'icon': Icons.shield, 'color': Colors.green},
+    {'title': 'Vacation Trip', 'target': 100000.0, 'current': 45000.0, 'icon': Icons.flight_takeoff, 'color': Colors.orange},
+  ];
 
   @override
   void initState() {
@@ -35,6 +50,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _transactions = txs;
         _profile = prof;
+        _preferredCurrency = prof['currency'] ?? 'LKR';
+        _simpleMode = prof['simple_mode'] == true;
       });
     } catch (e) {
       print('Error loading data: $e');
@@ -43,19 +60,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _addTransaction(double amount, String category, String type, String notes) async {
+  Future<void> _addTransaction(double amount, String category, String type, String notes, String location) async {
     final newTx = {
       'amount': amount,
       'category': category,
       'type': type,
       'payment_method': 'Cash',
       'date': DateTime.now().toIso8601String().substring(0, 10),
-      'notes': notes,
+      'notes': notes.isEmpty ? category : notes,
       'tags': ['manual'],
-      'location': 'Colombo',
+      'location': location.isEmpty ? 'Colombo' : location,
     };
 
-    // Transaction OTP verification for high-value operations (> LKR 50,000)
     if (type == 'expense' && amount > 50000) {
       setState(() {
         _pendingHighValueTx = newTx;
@@ -79,14 +95,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'This transaction of ${_profile['currency'] ?? 'LKR'} ${_pendingHighValueTx!['amount']} exceeds the high-value security limit. Enter OTP to authorize (Try 123456).',
+                'This expense of $_preferredCurrency ${_pendingHighValueTx!['amount']} exceeds the LKR 50,000 security threshold. Enter OTP code to authorize (Try 123456).',
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _otpController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Verification OTP Code'),
+                decoration: const InputDecoration(labelText: '6-Digit Verification OTP'),
               ),
             ],
           ),
@@ -107,7 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _otpController.clear();
                   _loadData();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Transaction successfully verified and authorized.')),
+                    const SnackBar(content: Text('Transaction authorized and saved.')),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -139,8 +155,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final currency = _profile['currency'] ?? 'LKR';
-    final simpleMode = _profile['simple_mode'] == true;
+    Widget currentBody;
+    switch (_currentTab) {
+      case 0:
+        currentBody = _buildHomeTab();
+        break;
+      case 1:
+        currentBody = _buildTransactionsTab();
+        break;
+      case 2:
+        currentBody = _buildAnalyticsTab();
+        break;
+      case 3:
+        currentBody = _buildGoalsTab();
+        break;
+      case 4:
+        currentBody = _buildSettingsTab();
+        break;
+      default:
+        currentBody = _buildHomeTab();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -152,31 +186,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
           )
         ],
       ),
-      body: _currentTab == 0 ? _buildHomeTab(currency, simpleMode) : _buildSettingsTab(),
+      body: currentBody,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
         onTap: (idx) => setState(() => _currentTab = idx),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: _themeColor,
+        unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'History'),
+          BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Analytics'),
+          BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Goals'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: _themeColor,
         onPressed: () => _showAddTransactionBottomSheet(),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  Widget _buildHomeTab(String currency, bool simpleMode) {
+  // ----------------------------------------------------
+  // 1. HOME TAB
+  // ----------------------------------------------------
+  Widget _buildHomeTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Balance Header Card
+          // User Welcome Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Hello, ${_profile['name'] ?? 'Alex'}! 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Welcome to your secure wealth dashboard.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              CircleAvatar(
+                backgroundColor: _themeColor.withOpacity(0.2),
+                child: Icon(Icons.person, color: _themeColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Total Balance Gradient Card
           Card(
-            color: Theme.of(context).primaryColor,
+            color: _themeColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -186,24 +249,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const Text('Total Balance', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 8),
                   Text(
-                    '$currency ${_balance.toStringAsFixed(2)}',
+                    '$_preferredCurrency ${_balance.toStringAsFixed(2)}',
                     style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('🟢 Income: $currency $_totalIncome', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                      Text('🔴 Expense: $currency $_totalExpense', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('🟢 Income: $_preferredCurrency $_totalIncome', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('🔴 Expense: $_preferredCurrency $_totalExpense', style: const TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   )
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // 2. Spend Limit Progress Indicator
+          // Summary Spending Cards
+          Row(
+            children: [
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Today's Spend", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 4),
+                        Text('$_preferredCurrency ${_totalExpense > 0 ? (_totalExpense * 0.15).toStringAsFixed(0) : '0'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Budget Left", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 4),
+                        Text('$_preferredCurrency ${(_totalIncome - _totalExpense).clamp(0, double.infinity).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Budget Usage Bar
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -215,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   LinearProgressIndicator(
                     value: _totalIncome > 0 ? (_totalExpense / _totalIncome) : 0,
                     backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(_totalExpense > _totalIncome ? Colors.red : Colors.green),
+                    valueColor: AlwaysStoppedAnimation<Color>(_totalExpense > _totalIncome ? Colors.red : _themeColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -226,41 +326,331 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // 3. Transactions List
-          const Text('Recent Transactions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _transactions.length,
-            itemBuilder: (context, index) {
-              final tx = _transactions[index];
-              final isExpense = tx['type'] == 'expense';
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
-                  child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
-                ),
-                title: Text(tx['notes'] ?? tx['category']),
-                subtitle: Text('${tx['date']} • ${tx['payment_method']}'),
-                trailing: Text(
-                  '${isExpense ? '-' : '+'} $currency ${tx['amount']}',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
-                ),
-              );
-            },
-          )
+          // If Advanced Mode: Show Accounts & Multi-Wallets
+          if (!_simpleMode) ...[
+            const Text('My Accounts & Wallets', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildWalletChip('💵 Cash', '$_preferredCurrency 15,000', Colors.green),
+                  _buildWalletChip('🏦 Bank Account', '$_preferredCurrency 250,000', Colors.blue),
+                  _buildWalletChip('💳 Credit Card', '$_preferredCurrency 45,000', Colors.purple),
+                  _buildWalletChip('📱 Digital Wallet', '$_preferredCurrency 8,500', Colors.orange),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Recent Transactions List
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Recent Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              TextButton(onPressed: () => setState(() => _currentTab = 1), child: const Text('See All')),
+            ],
+          ),
+          _buildTransactionList(_transactions.take(4).toList()),
         ],
       ),
     );
   }
 
+  Widget _buildWalletChip(String name, String balance, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 4),
+          Text(balance, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------
+  // 2. TRANSACTIONS / HISTORY TAB
+  // ----------------------------------------------------
+  Widget _buildTransactionsTab() {
+    final filtered = _transactions.where((tx) {
+      final matchesSearch = (tx['notes'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (tx['category'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesCat = _filterCategory == 'All' || tx['category'] == _filterCategory;
+      return matchesSearch && matchesCat;
+    }).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search expenses, categories, or notes...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              ),
+              const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Food', 'Transport', 'Salary', 'Bills'].map((cat) {
+                    final selected = _filterCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: ChoiceChip(
+                        label: Text(cat),
+                        selected: selected,
+                        onSelected: (_) => setState(() => _filterCategory = cat),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: SingleChildScrollView(padding: const EdgeInsets.symmetric(horizontal: 16), child: _buildTransactionList(filtered))),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // 3. ANALYTICS & AI ADVISOR TAB
+  // ----------------------------------------------------
+  Widget _buildAnalyticsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Financial Insights & Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+
+          // AI Advisor Card
+          Card(
+            color: Colors.amber[50],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Colors.amber[300]!)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.psychology, color: Colors.amber),
+                      SizedBox(width: 8),
+                      Text('🤖 AI Financial Assistant Advice', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _totalExpense > _totalIncome
+                        ? "• You spent more than your income this month! Try reducing Food dining out to save $_preferredCurrency 10,000."
+                        : "• Great job! You spent 20% less than your total budget limit. You can allocate $_preferredCurrency 15,000 to Emergency Savings.",
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Spending Category Breakdown
+          const Text('Expense Categories Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildCategoryProgressRow('🍔 Food', 0.45, Colors.orange),
+                  const SizedBox(height: 12),
+                  _buildCategoryProgressRow('🚗 Transport', 0.25, Colors.blue),
+                  const SizedBox(height: 12),
+                  _buildCategoryProgressRow('⚡ Bills', 0.20, Colors.red),
+                  const SizedBox(height: 12),
+                  _buildCategoryProgressRow('🛒 Shopping', 0.10, Colors.purple),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Monthly Subscriptions Tracker
+          const Text('Monthly Active Subscriptions', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(leading: const Icon(Icons.tv, color: Colors.red), title: const Text('Netflix Standard'), trailing: Text('$_preferredCurrency 2,800/mo')),
+                ListTile(leading: const Icon(Icons.music_note, color: Colors.green), title: const Text('Spotify Family'), trailing: Text('$_preferredCurrency 1,200/mo')),
+                ListTile(leading: const Icon(Icons.wifi, color: Colors.blue), title: const Text('Fibre Internet'), trailing: Text('$_preferredCurrency 4,500/mo')),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryProgressRow(String label, double pct, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            Text('${(pct * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(color)),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------
+  // 4. GOALS TAB
+  // ----------------------------------------------------
+  Widget _buildGoalsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Financial Goals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Goal'),
+              )
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._goals.map((g) {
+            final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              Text('Target: $_preferredCurrency ${g['target']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(g['color'])),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------
+  // 5. SETTINGS & CUSTOMIZER TAB
+  // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
+        const Text('Preferences & Customization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+
+        // Simple vs Advanced Mode Toggle
+        Card(
+          child: SwitchListTile(
+            title: const Text('Simple Beginner Mode'),
+            subtitle: const Text('Hides complex charts and multi-account tools'),
+            value: _simpleMode,
+            onChanged: (val) {
+              setState(() => _simpleMode = val);
+              widget.supabaseService.updateProfile({'simple_mode': val});
+            },
+          ),
+        ),
+
+        // Preferred Currency Selector
+        Card(
+          child: ListTile(
+            title: const Text('Preferred Currency'),
+            subtitle: Text('Currently set to $_preferredCurrency'),
+            trailing: DropdownButton<String>(
+              value: _preferredCurrency,
+              items: ['LKR', 'USD', 'EUR', 'GBP', 'INR'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _preferredCurrency = val);
+                  widget.supabaseService.updateProfile({'currency': val});
+                }
+              },
+            ),
+          ),
+        ),
+
+        // Theme Preset Color Pickers
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('App Theme Preset', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildColorPicker(const Color(0xFF2563EB), 'Blue'),
+                    _buildColorPicker(const Color(0xFF10B981), 'Green'),
+                    _buildColorPicker(const Color(0xFF8B5CF6), 'Purple'),
+                    _buildColorPicker(const Color(0xFFF97316), 'Orange'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+        const Text('Data Privacy & Control', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+
         Card(
           child: ListTile(
             title: const Text('Download My Financial Data (GDPR)'),
@@ -284,6 +674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           ),
         ),
+
         Card(
           child: ListTile(
             title: const Text('Delete Account Permanently'),
@@ -313,9 +704,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildColorPicker(Color color, String name) {
+    final isSelected = _themeColor == color;
+    return GestureDetector(
+      onTap: () => setState(() => _themeColor = color),
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: color,
+            radius: 18,
+            child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+          ),
+          const SizedBox(height: 4),
+          Text(name, style: const TextStyle(fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionList(List<Map<String, dynamic>> txList) {
+    if (txList.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(child: Text('No transactions recorded yet.', style: TextStyle(color: Colors.grey))),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: txList.length,
+      itemBuilder: (context, index) {
+        final tx = txList[index];
+        final isExpense = tx['type'] == 'expense';
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
+              child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
+            ),
+            title: Text(tx['notes'] ?? tx['category']),
+            subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location']}'),
+            trailing: Text(
+              '${isExpense ? '-' : '+'} $_preferredCurrency ${tx['amount']}',
+              style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showAddTransactionBottomSheet() {
     final amountController = TextEditingController();
     final noteController = TextEditingController();
+    final locationController = TextEditingController();
     String category = 'Food';
     String type = 'expense';
 
@@ -323,65 +766,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 24,
-            left: 24,
-            right: 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Add New Transaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Amount'),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                top: 24,
+                left: 24,
+                right: 24,
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: type,
-                items: const [
-                  DropdownMenuItem(value: 'expense', child: Text('Expense')),
-                  DropdownMenuItem(value: 'income', child: Text('Income')),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Add New Transaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: type,
+                    items: const [
+                      DropdownMenuItem(value: 'expense', child: Text('Expense')),
+                      DropdownMenuItem(value: 'income', child: Text('Income')),
+                    ],
+                    onChanged: (val) => setModalState(() => type = val ?? 'expense'),
+                    decoration: const InputDecoration(labelText: 'Transaction Type'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: category,
+                    items: const [
+                      DropdownMenuItem(value: 'Food', child: Text('Food')),
+                      DropdownMenuItem(value: 'Transport', child: Text('Transport')),
+                      DropdownMenuItem(value: 'Salary', child: Text('Salary')),
+                      DropdownMenuItem(value: 'Bills', child: Text('Bills')),
+                      DropdownMenuItem(value: 'Shopping', child: Text('Shopping')),
+                    ],
+                    onChanged: (val) => setModalState(() => category = val ?? 'Food'),
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteController,
+                    decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut or Uber)'),
+                    onChanged: (text) {
+                      final lText = text.toLowerCase();
+                      if (lText.contains('pizza') || lText.contains('food') || lText.contains('kfc')) {
+                        setModalState(() => category = 'Food');
+                      } else if (lText.contains('uber') || lText.contains('cab') || lText.contains('ride')) {
+                        setModalState(() => category = 'Transport');
+                      } else if (lText.contains('electricity') || lText.contains('water') || lText.contains('bill')) {
+                        setModalState(() => category = 'Bills');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(labelText: 'Location (e.g. Colombo 03)'),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                    onPressed: () {
+                      final amt = double.tryParse(amountController.text) ?? 0.0;
+                      if (amt > 0) {
+                        Navigator.pop(context);
+                        _addTransaction(amt, category, type, noteController.text, locationController.text);
+                      }
+                    },
+                    child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),
+                  ),
+                  const SizedBox(height: 24),
                 ],
-                onChanged: (val) => type = val ?? 'expense',
-                decoration: const InputDecoration(labelText: 'Transaction Type'),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: category,
-                items: const [
-                  DropdownMenuItem(value: 'Food', child: Text('Food')),
-                  DropdownMenuItem(value: 'Transport', child: Text('Transport')),
-                  DropdownMenuItem(value: 'Salary', child: Text('Salary')),
-                  DropdownMenuItem(value: 'Bills', child: Text('Bills')),
-                ],
-                onChanged: (val) => category = val ?? 'Food',
-                decoration: const InputDecoration(labelText: 'Category'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(labelText: 'Notes'),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  final amt = double.tryParse(amountController.text) ?? 0.0;
-                  if (amt > 0) {
-                    Navigator.pop(context);
-                    _addTransaction(amt, category, type, noteController.text);
-                  }
-                },
-                child: const Text('Add Transaction'),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         );
       },
     );
