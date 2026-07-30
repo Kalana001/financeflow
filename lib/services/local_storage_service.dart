@@ -8,6 +8,7 @@ class LocalStorageService {
   static const String _keyCategories = 'ff_categories';
   static const String _keyCategoryBudgets = 'ff_cat_budgets';
   static const String _keyRecurring = 'ff_recurring';
+  static const String _keyGoals = 'ff_goals';
 
   // ----------------------------------------------------
   // PROFILE & SETUP MANAGEMENT
@@ -37,6 +38,26 @@ class LocalStorageService {
     final prof = (await getProfile()) ?? {};
     prof[key] = value;
     await saveProfile(prof);
+  }
+
+  // ----------------------------------------------------
+  // GOALS MANAGEMENT & PERSISTENCE
+  // ----------------------------------------------------
+  Future<List<Map<String, dynamic>>> getGoals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_keyGoals);
+    if (str == null) return [];
+    try {
+      final List rawList = jsonDecode(str);
+      return rawList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveGoals(List<Map<String, dynamic>> goals) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyGoals, jsonEncode(goals));
   }
 
   // ----------------------------------------------------
@@ -268,6 +289,7 @@ class LocalStorageService {
     final cats = await getCategories();
     final recs = await getRecurringTransactions();
     final budgets = await getCategoryBudgets();
+    final goals = await getGoals();
     final dump = {
       'exported_at': DateTime.now().toIso8601String(),
       'profile': prof,
@@ -275,6 +297,7 @@ class LocalStorageService {
       'categories': cats,
       'category_budgets': budgets,
       'recurring_subscriptions': recs,
+      'goals': goals,
       'transactions': txs,
     };
     return jsonEncode(dump);

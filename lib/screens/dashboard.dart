@@ -27,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _recurringItems = [];
   Map<String, double> _categoryBudgets = {};
   Map<String, dynamic> _profile = {};
+  List<Map<String, dynamic>> _goals = [];
   bool _isLoading = true;
   String _searchQuery = '';
   String _filterCategory = 'All';
@@ -69,9 +70,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Category Icon Palette
   final List<String> _categoryIcons = ['🍔', '🚗', '⚡', '🛒', '💰', '🏥', '🍿', '🏋️', '🐶', '🎁', '✈️', '🎓', '🎮', '☕'];
 
-  // Dynamic Goals List starts EMPTY for new users
-  final List<Map<String, dynamic>> _goals = [];
-
   @override
   void initState() {
     super.initState();
@@ -86,6 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final cats = await widget.storageService.getCategories();
       final recs = await widget.storageService.getRecurringTransactions();
       final budgets = await widget.storageService.getCategoryBudgets();
+      final savedGoals = await widget.storageService.getGoals();
       final prof = (await widget.storageService.getProfile()) ?? {};
 
       setState(() {
@@ -94,6 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _categories = cats;
         _recurringItems = recs;
         _categoryBudgets = budgets;
+        _goals = savedGoals;
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _targetMonthlyBudget = (double.tryParse(prof['monthly_budget'].toString()) ?? 100000.0);
@@ -1487,7 +1487,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB
+  // 4. GOALS TAB (With Interactive Deposit Money & Persistence Fix)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1528,9 +1528,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ] else ...[
             ..._goals.map((g) {
-              final target = (g['target'] as double);
-              final current = (g['current'] as double);
-              final pct = (current / target).clamp(0.0, 1.0);
+              final target = (double.tryParse(g['target'].toString()) ?? 50000.0);
+              final current = (double.tryParse(g['current'].toString()) ?? 0.0);
+              final pct = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 14),
@@ -1542,28 +1542,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Row(
                         children: [
-                          CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                          const CircleAvatar(backgroundColor: Color(0xFFF3E8FF), child: Icon(Icons.stars, color: Colors.purple)),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text(g['title'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} (${(pct * 100).toStringAsFixed(0)}%)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                               ],
                             ),
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            tooltip: 'Delete Goal',
+                            onPressed: () async {
+                              setState(() {
+                                _goals.removeWhere((item) => item['id'] == g['id']);
+                              });
+                              await widget.storageService.saveGoals(_goals);
+                            },
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
                           value: pct,
                           minHeight: 8,
                           backgroundColor: Colors.grey[200],
-                          valueColor: AlwaysStoppedAnimation<Color>(g['color']),
+                          valueColor: AlwaysStoppedAnimation<Color>(pct >= 1.0 ? Colors.green : Colors.purple),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                            label: const Text('Add Money / Deposit', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: () => _showDepositToGoalModal(g),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1573,6 +1599,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  void _showDepositToGoalModal(Map<String, dynamic> goal) {
+    final depositController = TextEditingController();
+    String fromWallet = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: Text('Deposit to ${goal['title']}'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: fromWallet,
+                    items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                    onChanged: (val) => setModalState(() => fromWallet = val ?? fromWallet),
+                    decoration: const InputDecoration(labelText: 'Pay From Wallet'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: depositController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Deposit Amount (e.g. 5000)'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final amt = double.tryParse(depositController.text) ?? 0.0;
+                    if (amt > 0) {
+                      Navigator.pop(context);
+                      final currentSaved = (double.tryParse(goal['current'].toString()) ?? 0.0);
+                      
+                      setState(() {
+                        goal['current'] = currentSaved + amt;
+                      });
+
+                      await widget.storageService.saveGoals(_goals);
+
+                      await _addTransaction(
+                        amt,
+                        'Savings',
+                        'expense',
+                        'Goal Savings: ${goal['title']}',
+                        'Deposit',
+                        fromWallet,
+                        DateTime.now(),
+                      );
+                    }
+                  },
+                  child: const Text('Deposit Money'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1603,21 +1694,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final t = titleController.text.trim();
                     final target = double.tryParse(targetController.text) ?? 50000.0;
                     if (t.isNotEmpty) {
                       Navigator.pop(context);
+                      final newGoal = {
+                        'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
+                        'title': t,
+                        'target': target,
+                        'current': 0.0,
+                      };
                       setState(() {
-                        _goals.add({
-                          'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
-                          'title': t,
-                          'target': target,
-                          'current': 0.0,
-                          'icon': Icons.stars,
-                          'color': Colors.purple,
-                        });
+                        _goals.add(newGoal);
                       });
+                      await widget.storageService.saveGoals(_goals);
                     }
                   },
                   child: const Text('Create Goal'),
@@ -1671,7 +1762,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls (With 24-Hour Time Frame Selection)
+        // SECTION 2: Privacy & Security Controls
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
