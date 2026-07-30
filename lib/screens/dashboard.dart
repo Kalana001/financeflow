@@ -1058,7 +1058,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (ALL Categories Shown + Single/Bulk Limit Options)
+  // 3. ANALYTICS TAB (With Restored AI Simulator & Vertical Bar Chart)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1067,6 +1067,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
+
+    // AI What-If Simulator Calculation
+    final selectedCatExpenses = monthTxs
+        .where((t) => t['category'].toString().toLowerCase().contains(_whatIfCategory.toLowerCase()) && t['type'] == 'expense')
+        .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
+    final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
+
+    final maxCashflow = [monthIncome, monthExpense].reduce((a, b) => a > b ? a : b);
+    final maxCashflowBase = maxCashflow > 0 ? maxCashflow : 1.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -1125,6 +1135,117 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+
+          // RESTORED AI WHAT-IF PREDICTIVE SIMULATOR
+          Card(
+            color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('🔮 AI "What-If" Predictive Simulator', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _whatIfCategory,
+                        items: ['Food', 'Transport', 'Bills', 'Shopping'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _whatIfCategory = val);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text('What if I reduce $_whatIfCategory expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Slider(
+                    value: _whatIfCutPct,
+                    min: 0,
+                    max: 50,
+                    divisions: 10,
+                    label: '${_whatIfCutPct.toStringAsFixed(0)}%',
+                    onChanged: (val) => setState(() => _whatIfCutPct = val),
+                  ),
+                  Text(
+                    '👉 Projected 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // VERTICAL BAR CHART: INCOME VS EXPENSE CASHFLOW
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('📊 Cashflow Comparison (Vertical Bar Chart)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 160,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Vertical Bar 1: Income
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text('$_preferredCurrency ${monthIncome.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green)),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 48,
+                              height: (120 * (monthIncome / maxCashflowBase)).clamp(10.0, 120.0),
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('🟢 Income', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        // Vertical Bar 2: Expense
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text('$_preferredCurrency ${monthExpense.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red)),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 48,
+                              height: (120 * (monthExpense / maxCashflowBase)).clamp(10.0, 120.0),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('🔴 Expense', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -1217,23 +1338,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Cashflow Ratio Bar Chart
-          const Text('Income vs Expense Cashflow Ratio', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  _buildBarChartRow('🟢 Income Cashflow', monthIncome > 0 ? 1.0 : 0.0, Colors.green, '$_preferredCurrency ${monthIncome.toStringAsFixed(0)}'),
-                  const SizedBox(height: 12),
-                  _buildBarChartRow('🔴 Expense Outflow', monthExpense > 0 ? 1.0 : 0.0, Colors.red, '$_preferredCurrency ${monthExpense.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1346,31 +1450,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildBarChartRow(String label, double pct, Color color, String amountStr) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            Text(amountStr, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 10,
-            backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
-        ),
-      ],
     );
   }
 
