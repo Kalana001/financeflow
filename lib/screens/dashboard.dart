@@ -48,9 +48,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isDarkMode = false;
   Color _themeColor = const Color(0xFF2563EB);
 
-  // Daily Reminder States
+  // Daily Reminder States (Configurable Hour)
   bool _dailyReminderEnabled = true;
-  String _dailyReminderTime = '8:00 PM';
+  int _dailyReminderHour = 20; // 8:00 PM default
 
   // 24 Avatar Palette Choices
   final List<String> _avatars = [
@@ -105,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _pinCode = prof['pin_code'] ?? '1234';
         _isDarkMode = prof['dark_mode'] == true;
         _dailyReminderEnabled = prof['daily_reminder_enabled'] ?? true;
-        _dailyReminderTime = prof['daily_reminder_time'] ?? '8:00 PM';
+        _dailyReminderHour = prof['daily_reminder_hour'] ?? 20;
 
         if (prof['theme_color_val'] != null) {
           _themeColor = Color(prof['theme_color_val'] as int);
@@ -116,6 +116,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  String _formatReminderHour(int hour) {
+    if (hour == 12) return '12:00 PM';
+    if (hour > 12) return '${hour - 12}:00 PM';
+    return '$hour:00 AM';
   }
 
   // Available months for filter dropdown
@@ -327,7 +333,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (With Daily Reminder Banner & Subscriptions)
+  // 1. HOME TAB (Daily Reminder ONLY Visible After Selected Hour)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -336,6 +342,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final netWorthStr = _stealthMode ? '••••••' : '${_totalNetWorth.toStringAsFixed(2)}';
     final incomeStr = _stealthMode ? '••••' : _totalIncome.toStringAsFixed(0);
     final expenseStr = _stealthMode ? '••••' : _totalExpense.toStringAsFixed(0);
+
+    // Evaluate exact reminder hour condition
+    final currentHour = DateTime.now().hour;
+    final isReminderTimeReached = currentHour >= _dailyReminderHour;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -360,8 +370,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Daily Expense Reminder Banner (If not logged today yet)
-          if (_dailyReminderEnabled && !_hasLoggedToday) ...[
+          // Daily Expense Reminder Banner ONLY visible if enabled, not logged today, AND reminder time has arrived!
+          if (_dailyReminderEnabled && !_hasLoggedToday && isReminderTimeReached) ...[
             Container(
               padding: const EdgeInsets.all(14.0),
               decoration: BoxDecoration(
@@ -376,9 +386,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('🔔 Daily Expense Reminder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
-                        Text('You haven\'t logged any transactions today yet!', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      children: [
+                        Text('🔔 Daily Reminder (${_formatReminderHour(_dailyReminderHour)})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+                        const Text('You haven\'t logged any transactions today yet!', style: TextStyle(fontSize: 11, color: Colors.black54)),
                       ],
                     ),
                   ),
@@ -472,7 +482,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Recurring Subscriptions Section (Feature 1)
+          // Recurring Subscriptions Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -878,7 +888,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (High Contrast Summary Metrics)
+  // 2. TRANSACTIONS TAB
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -983,7 +993,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Category Budgeting Limits - Feature 3)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1053,7 +1063,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // PER-CATEGORY BUDGETING LIMITS & WARNING BARS (Feature 3)
+          // PER-CATEGORY BUDGETING LIMITS & WARNING BARS
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -1366,7 +1376,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (With PDF Report Exporter & Reminders)
+  // 5. SETTINGS TAB (With Configurable Reminder Time & File Download Copy)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1406,21 +1416,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls (Daily Reminder Feature 5)
+        // SECTION 2: Privacy & Security Controls (With Daily Reminder Time Picker)
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls (100% Offline)'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: [
-              SwitchListTile(
-                secondary: const Icon(Icons.notifications_active, color: Colors.amber),
+              ListTile(
+                leading: const Icon(Icons.notifications_active, color: Colors.amber),
                 title: const Text('🔔 Daily Expense Reminder'),
-                subtitle: Text(_dailyReminderEnabled ? 'Active at $_dailyReminderTime' : 'Disabled'),
-                value: _dailyReminderEnabled,
-                onChanged: (val) async {
-                  setState(() => _dailyReminderEnabled = val);
-                  await widget.storageService.updateProfileField('daily_reminder_enabled', val);
-                },
+                subtitle: Text(_dailyReminderEnabled ? 'Remind at ${_formatReminderHour(_dailyReminderHour)}' : 'Disabled'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_dailyReminderEnabled)
+                      DropdownButton<int>(
+                        value: _dailyReminderHour,
+                        items: [18, 19, 20, 21, 22].map((h) => DropdownMenuItem(value: h, child: Text(_formatReminderHour(h)))).toList(),
+                        onChanged: (val) async {
+                          if (val != null) {
+                            setState(() => _dailyReminderHour = val);
+                            await widget.storageService.updateProfileField('daily_reminder_hour', val);
+                          }
+                        },
+                      ),
+                    Switch(
+                      value: _dailyReminderEnabled,
+                      onChanged: (val) async {
+                        setState(() => _dailyReminderEnabled = val);
+                        await widget.storageService.updateProfileField('daily_reminder_enabled', val);
+                      },
+                    ),
+                  ],
+                ),
               ),
               const Divider(height: 1),
               SwitchListTile(
@@ -1453,8 +1481,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 3: Data Backup & PDF Report Exporter (Feature 4)
-        _buildSettingsHeader('3. 💾 Data Backup & PDF Report Exporter'),
+        // SECTION 3: Data Backup & Export Data (With Clipboard Copy & Download)
+        _buildSettingsHeader('3. 💾 Data Backup & Report Exporter'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
@@ -1462,7 +1490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
                 title: const Text('📄 Export Executive PDF Statement'),
-                subtitle: const Text('Generate printable financial statement report'),
+                subtitle: const Text('Download / Copy printable financial report'),
                 trailing: const Icon(Icons.download),
                 onTap: () async {
                   final reportStr = await widget.storageService.generatePdfStatementReport();
@@ -1472,6 +1500,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       title: const Text('Executive Financial Statement Report'),
                       content: SingleChildScrollView(child: SelectableText(reportStr, style: const TextStyle(fontFamily: 'monospace', fontSize: 11))),
                       actions: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('Copy Report'),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: reportStr));
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('📋 Executive PDF Statement copied to clipboard! You can save as a document file.')),
+                            );
+                          },
+                        ),
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
                       ],
                     ),
@@ -1482,7 +1521,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ListTile(
                 leading: const Icon(Icons.table_chart, color: Colors.green),
                 title: const Text('Export Data to CSV / Excel'),
-                subtitle: const Text('Download transactions spreadsheet'),
+                subtitle: const Text('Download / Copy transactions spreadsheet'),
                 trailing: const Icon(Icons.download),
                 onTap: () async {
                   final csvStr = await widget.storageService.exportCsvData();
@@ -1490,8 +1529,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Exported CSV Spreadsheet'),
-                      content: SingleChildScrollView(child: Text(csvStr)),
+                      content: SingleChildScrollView(child: SelectableText(csvStr, style: const TextStyle(fontSize: 11))),
                       actions: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('Copy CSV Data'),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: csvStr));
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('📋 CSV Spreadsheet data copied to clipboard! You can paste and save as a .csv file.')),
+                            );
+                          },
+                        ),
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
                       ],
                     ),
