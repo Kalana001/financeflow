@@ -556,7 +556,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('My Accounts & Wallets', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              const Expanded(
+                child: Text(
+                  'My Accounts & Wallets',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               TextButton.icon(
                 onPressed: _showAddAccountModal,
                 icon: const Icon(Icons.add_card, size: 16),
@@ -581,7 +587,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('🔁 Subscriptions & Recurring Bills', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              const Expanded(
+                child: Text(
+                  '🔁 Subscriptions & Recurring Bills',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               TextButton.icon(
                 onPressed: _showAddSubscriptionModal,
                 icon: const Icon(Icons.add, size: 16),
