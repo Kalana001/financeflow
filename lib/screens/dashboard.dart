@@ -755,6 +755,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           tooltip: 'Confirm & Log transaction now',
                           onPressed: () => _showConfirmRecurringDialog(rec),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          tooltip: 'Delete Subscription',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Confirm Delete Subscription', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: Text('Are you sure you want to delete recurring subscription "${rec['title']}"?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Delete Subscription', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await widget.storageService.deleteRecurringTransaction(rec['id']);
+                              _loadData();
+                            }
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -1142,12 +1175,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showEditAccountModal(rawAcc);
-                    },
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showEditAccountModal(rawAcc);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        tooltip: 'Delete Wallet',
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: const Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Confirm Delete Wallet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              content: Text('Are you sure you want to delete wallet "$name"?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete Wallet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            Navigator.pop(context);
+                            final accs = await widget.storageService.getAccounts();
+                            accs.removeWhere((a) => a['id'] == id || a['name'] == name);
+                            await widget.storageService.saveAccounts(accs);
+                            _loadData();
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1987,10 +2060,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                             tooltip: 'Delete Goal',
                             onPressed: () async {
-                              setState(() {
-                                _goals.removeWhere((item) => item['id'] == g['id']);
-                              });
-                              await widget.storageService.saveGoals(_goals);
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  title: const Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, color: Colors.red),
+                                      SizedBox(width: 8),
+                                      Text('Confirm Delete Goal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  content: Text('Are you sure you want to delete goal "${g['title']}"? Saved progress of $_preferredCurrency ${current.toStringAsFixed(0)} will be removed.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Delete Goal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                setState(() {
+                                  _goals.removeWhere((item) => item['id'] == g['id']);
+                                });
+                                await widget.storageService.saveGoals(_goals);
+                              }
                             },
                           ),
                         ],
@@ -2562,6 +2660,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return Dismissible(
           key: Key(tx['id'] ?? index.toString()),
+          confirmDismiss: (direction) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Confirm Delete Transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                content: Text('Are you sure you want to delete this ${tx['type']} transaction of $_preferredCurrency ${tx['amount']} (${tx['category']})? This action cannot be undone.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            );
+          },
           background: Container(
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
@@ -2586,9 +2708,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               title: Text(tx['notes'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
               subtitle: Text(subtitleText, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
-              trailing: Text(
-                isTransfer ? '🔄 $_preferredCurrency $amtStr' : '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isTransfer ? Colors.blue : (isExpense ? Colors.red : Colors.green)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isTransfer ? '🔄 $_preferredCurrency $amtStr' : '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isTransfer ? Colors.blue : (isExpense ? Colors.red : Colors.green)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                    tooltip: 'Delete Transaction',
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Confirm Delete Transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          content: Text('Are you sure you want to delete this ${tx['type']} transaction of $_preferredCurrency ${tx['amount']} (${tx['category']})? This action cannot be undone.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        await widget.storageService.deleteTransaction(tx['id']);
+                        _loadData();
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
           ),
