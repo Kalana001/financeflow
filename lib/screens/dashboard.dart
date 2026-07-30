@@ -1405,8 +1405,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final monthIncome = monthTxs.where((t) => t['type'] == 'income').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
     final monthExpense = monthTxs.where((t) => t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-    String healthScoreText = '0 / 100 (No Data)';
-    Color healthColor = Colors.grey;
+    String healthScoreText = '0 / 100 (Awaiting Data ✨)';
+    Color healthColor = Colors.teal;
 
     if (monthIncome > 0) {
       final scoreVal = (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100);
@@ -1424,8 +1424,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       healthScoreText = '0 / 100 (Overbudget)';
       healthColor = Colors.red;
     } else {
-      healthScoreText = '0 / 100 (No Data)';
-      healthColor = Colors.grey;
+      healthScoreText = '0 / 100 (Awaiting Data ✨)';
+      healthColor = Colors.teal;
     }
 
     final double runwayMonths = monthExpense > 0
