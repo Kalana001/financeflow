@@ -350,6 +350,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildBottomNavItem(int index, IconData icon, String label) {
+    final isSelected = _currentTab == index;
+    final color = isSelected ? _themeColor : Colors.grey[500];
+
+    return InkWell(
+      onTap: () => setState(() => _currentTab = index),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -405,24 +433,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         body: currentBody,
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentTab,
-          onTap: (idx) => setState(() => _currentTab = idx),
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: _themeColor,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'History'),
-            BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Analytics'),
-            BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Goals'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-          ],
+        // DOCKED CENTER FLOATING ACTION BUTTON WITH ACCENT GLOW (MATCHES USER PHOTO)
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: _themeColor.withOpacity(0.4),
+                blurRadius: 16,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            shape: const CircleBorder(),
+            backgroundColor: _themeColor,
+            elevation: 6,
+            onPressed: () => _showAddTransactionBottomSheet(),
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          ),
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: _themeColor,
-          onPressed: () => _showAddTransactionBottomSheet(),
-          child: const Icon(Icons.add, color: Colors.white),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        // BALANCED NOTCHED BOTTOM BAR FOR ALL 5 TABS
+        bottomNavigationBar: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8.0,
+          elevation: 10,
+          color: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildBottomNavItem(0, Icons.home, 'Home'),
+                _buildBottomNavItem(1, Icons.receipt_long, 'History'),
+                _buildBottomNavItem(2, Icons.insights, 'Analytics'),
+                _buildBottomNavItem(3, Icons.track_changes, 'Goals'),
+                _buildBottomNavItem(4, Icons.settings, 'Settings'),
+              ],
+            ),
+          ),
         ),
       ),
     );
