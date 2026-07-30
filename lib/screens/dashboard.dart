@@ -372,7 +372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB
+  // 1. HOME TAB (Responsive Phone Frame Safe)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -966,7 +966,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB
+  // 2. TRANSACTIONS TAB (Responsive Frame Safe)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -987,7 +987,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Column(
       children: [
-        // Top Search & Month Filter Header
+        // Top Search & Month Filter Header (Responsive Frame Safe)
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1008,7 +1008,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   DropdownButton<String>(
                     value: _selectedMonthFilter,
                     items: _availableMonths.map((m) {
-                      return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All Months' : '📅 $m'));
+                      return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All' : '📅 $m', style: const TextStyle(fontSize: 12)));
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _selectedMonthFilter = val);
@@ -1070,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (Responsive Frame Safe)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1110,11 +1110,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               DropdownButton<String>(
                 value: _selectedMonthFilter,
                 items: _availableMonths.map((m) {
-                  return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All Months' : '📅 $m'));
+                  return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All' : '📅 $m', style: const TextStyle(fontSize: 12)));
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedMonthFilter = val);
@@ -1162,7 +1162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD
+          // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD (Responsive Phone Frame Safe)
           Card(
             color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -1179,16 +1179,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAlignment: WrapCrossAlignment.center,
                     children: [
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          const Text('Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 6),
                           DropdownButton<String>(
                             value: currentSimCat,
-                            items: activeSimCategories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
+                            items: activeSimCategories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}', style: const TextStyle(fontSize: 12)))).toList(),
                             onChanged: (val) {
                               if (val != null) setState(() => _whatIfCategory = val);
                             },
@@ -1208,11 +1210,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     label: '${_whatIfCutPct.toStringAsFixed(0)}%',
                     onChanged: (val) => setState(() => _whatIfCutPct = val),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
-                      Text('💵 Monthly Savings: +$_preferredCurrency ${monthlySavings.toStringAsFixed(0)} / mo', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
-                      Text('🚀 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 12)),
+                      Text('💵 Monthly: +$_preferredCurrency ${monthlySavings.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
+                      const SizedBox(width: 10),
+                      Text('🚀 6-Month: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 11)),
                     ],
                   ),
                 ],
@@ -1293,7 +1296,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('🎯 Category Spending & Budget Caps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const Text('🎯 Category Spending Caps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       Row(
                         children: [
                           TextButton(
@@ -1302,7 +1305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           TextButton(
                             onPressed: _showSetBulkCategoryBudgetModal,
-                            child: const Text('Set All (Bulk)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            child: const Text('Set All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -1487,7 +1490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (With Interactive Deposit Money & Persistence Fix)
+  // 4. GOALS TAB (Simplified Amount-Only Deposit Fix)
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1602,66 +1605,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // SIMPLIFIED AMOUNT-ONLY DEPOSIT MODAL (NO WALLET SELECTOR / NO DEDUCTION)
   void _showDepositToGoalModal(Map<String, dynamic> goal) {
     final depositController = TextEditingController();
-    String fromWallet = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
 
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return AlertDialog(
-              title: Text('Deposit to ${goal['title']}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: fromWallet,
-                    items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
-                    onChanged: (val) => setModalState(() => fromWallet = val ?? fromWallet),
-                    decoration: const InputDecoration(labelText: 'Pay From Wallet'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: depositController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                    decoration: const InputDecoration(labelText: 'Deposit Amount (e.g. 5000)'),
-                  ),
-                ],
+        return AlertDialog(
+          title: Text('Deposit to ${goal['title']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: depositController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                decoration: const InputDecoration(labelText: 'Enter Deposit Amount (e.g. 5000)'),
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                ElevatedButton(
-                  onPressed: () async {
-                    final amt = double.tryParse(depositController.text) ?? 0.0;
-                    if (amt > 0) {
-                      Navigator.pop(context);
-                      final currentSaved = (double.tryParse(goal['current'].toString()) ?? 0.0);
-                      
-                      setState(() {
-                        goal['current'] = currentSaved + amt;
-                      });
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final amt = double.tryParse(depositController.text) ?? 0.0;
+                if (amt > 0) {
+                  Navigator.pop(context);
+                  final currentSaved = (double.tryParse(goal['current'].toString()) ?? 0.0);
+                  
+                  setState(() {
+                    goal['current'] = currentSaved + amt;
+                  });
 
-                      await widget.storageService.saveGoals(_goals);
-
-                      await _addTransaction(
-                        amt,
-                        'Savings',
-                        'expense',
-                        'Goal Savings: ${goal['title']}',
-                        'Deposit',
-                        fromWallet,
-                        DateTime.now(),
-                      );
-                    }
-                  },
-                  child: const Text('Deposit Money'),
-                ),
-              ],
-            );
-          },
+                  await widget.storageService.saveGoals(_goals);
+                }
+              },
+              child: const Text('Deposit Money'),
+            ),
+          ],
         );
       },
     );
@@ -1722,7 +1704,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB
+  // 5. SETTINGS TAB (Responsive Phone Frame Safe)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1762,40 +1744,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls
+        // SECTION 2: Privacy & Security Controls (Responsive Frame Safe Reminder Tile)
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(Icons.notifications_active, color: Colors.amber),
+              SwitchListTile(
+                secondary: const Icon(Icons.notifications_active, color: Colors.amber),
                 title: const Text('🔔 Daily Expense Reminder'),
-                subtitle: Text(_dailyReminderEnabled ? 'Remind at ${_formatReminderHour(_dailyReminderHour)}' : 'Disabled'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_dailyReminderEnabled)
-                      DropdownButton<int>(
-                        value: _dailyReminderHour,
-                        items: List.generate(24, (h) => DropdownMenuItem(value: h, child: Text(_formatReminderHour(h)))),
-                        onChanged: (val) async {
-                          if (val != null) {
-                            setState(() => _dailyReminderHour = val);
-                            await widget.storageService.updateProfileField('daily_reminder_hour', val);
-                          }
-                        },
-                      ),
-                    Switch(
-                      value: _dailyReminderEnabled,
-                      onChanged: (val) async {
-                        setState(() => _dailyReminderEnabled = val);
-                        await widget.storageService.updateProfileField('daily_reminder_enabled', val);
-                      },
-                    ),
-                  ],
-                ),
+                subtitle: Text(_dailyReminderEnabled ? 'Active (Tap switch to disable)' : 'Disabled'),
+                value: _dailyReminderEnabled,
+                onChanged: (val) async {
+                  setState(() => _dailyReminderEnabled = val);
+                  await widget.storageService.updateProfileField('daily_reminder_enabled', val);
+                },
               ),
+              if (_dailyReminderEnabled) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.access_time, color: Colors.blue),
+                  title: const Text('Reminder Hour Time Frame'),
+                  subtitle: Text(_formatReminderHour(_dailyReminderHour)),
+                  trailing: DropdownButton<int>(
+                    value: _dailyReminderHour,
+                    items: List.generate(24, (h) => DropdownMenuItem(value: h, child: Text(_formatReminderHour(h), style: const TextStyle(fontSize: 12)))),
+                    onChanged: (val) async {
+                      if (val != null) {
+                        setState(() => _dailyReminderHour = val);
+                        await widget.storageService.updateProfileField('daily_reminder_hour', val);
+                      }
+                    },
+                  ),
+                ),
+              ],
               const Divider(height: 1),
               SwitchListTile(
                 secondary: const Icon(Icons.visibility_off, color: Colors.purple),
