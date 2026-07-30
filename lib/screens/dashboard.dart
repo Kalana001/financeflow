@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   String _searchQuery = '';
   String _filterCategory = 'All';
+  String _selectedMonthFilter = 'All';
 
   // Preferences
   bool _simpleMode = false;
@@ -79,19 +80,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // List of available months for filter dropdown
+  List<String> get _availableMonths {
+    final Set<String> months = {'All'};
+    for (var tx in _transactions) {
+      final d = tx['date'].toString();
+      if (d.length >= 7) {
+        months.add(d.substring(0, 7)); // e.g. "2026-07"
+      }
+    }
+    return months.toList();
+  }
+
+  // Filtered transactions by selected month
+  List<Map<String, dynamic>> get _filteredByMonthTransactions {
+    if (_selectedMonthFilter == 'All') return _transactions;
+    return _transactions.where((t) => t['date'].toString().startsWith(_selectedMonthFilter)).toList();
+  }
+
   // Dynamic Net Worth calculation: Sum of all wallet balances
   double get _totalNetWorth => _accounts.fold(
       0.0, (sum, acc) => sum + (double.tryParse(acc['current_balance'].toString()) ?? 0.0));
 
-  double get _totalIncome => _transactions
+  double get _totalIncome => _filteredByMonthTransactions
       .where((t) => t['type'] == 'income')
       .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-  double get _totalExpense => _transactions
+  double get _totalExpense => _filteredByMonthTransactions
       .where((t) => t['type'] == 'expense')
       .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId) async {
+  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId, DateTime selectedDate) async {
     final newTx = {
       'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
       'amount': amount,
@@ -99,7 +118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'type': type,
       'account_id': accountId,
       'payment_method': 'Cash',
-      'date': DateTime.now().toIso8601String().substring(0, 10),
+      'date': selectedDate.toIso8601String().substring(0, 10),
       'notes': notes.isEmpty ? category : notes,
       'location': location.isEmpty ? 'Colombo' : location,
     };
@@ -244,7 +263,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // User Greeting Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -375,7 +393,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Top Savings Goals Overview (Only shown if goals exist!)
+          // Top Savings Goals Overview
           if (_goals.isNotEmpty) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -657,10 +675,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB
+  // 2. TRANSACTIONS TAB (With Monthly Filter)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
-    final filtered = _transactions.where((tx) {
+    final filtered = _filteredByMonthTransactions.where((tx) {
       final matchesSearch = (tx['notes'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (tx['category'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesCat = _filterCategory == 'All' || tx['category'] == _filterCategory;
@@ -673,13 +691,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              TextField(
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search expenses, categories, or notes...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Search notes or categories...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: _selectedMonthFilter,
+                    items: _availableMonths.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All Months' : '📅 $m'));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedMonthFilter = val);
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               SingleChildScrollView(
@@ -710,7 +744,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (With Monthly Filter & Weekly Breakdown Bar Chart)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -742,26 +776,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    final healthScore = _totalIncome > 0 ? (((_totalIncome - _totalExpense) / _totalIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
-    final monthlyExpense = _totalExpense > 0 ? _totalExpense : 25000.0;
-    final runwayMonths = (_totalNetWorth / monthlyExpense).clamp(0.0, 99.0);
+    final monthTxs = _filteredByMonthTransactions;
+    final monthIncome = monthTxs.where((t) => t['type'] == 'income').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    final monthExpense = monthTxs.where((t) => t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-    final selectedCatExpenses = _transactions
+    final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
+    final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
+
+    final selectedCatExpenses = monthTxs
         .where((t) => t['category'] == _whatIfCategory && t['type'] == 'expense')
         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
     final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
 
-    final totalCashflow = (_totalIncome + _totalExpense) > 0 ? (_totalIncome + _totalExpense) : 1.0;
-    final incomePct = (_totalIncome / totalCashflow).clamp(0.0, 1.0);
-    final expensePct = (_totalExpense / totalCashflow).clamp(0.0, 1.0);
+    final totalCashflow = (monthIncome + monthExpense) > 0 ? (monthIncome + monthExpense) : 1.0;
+    final incomePct = (monthIncome / totalCashflow).clamp(0.0, 1.0);
+    final expensePct = (monthExpense / totalCashflow).clamp(0.0, 1.0);
+
+    // Week-by-Week Spending Breakdown Calculation
+    double week1 = 0, week2 = 0, week3 = 0, week4 = 0;
+    for (var tx in monthTxs) {
+      if (tx['type'] == 'expense' && tx['date'] != null) {
+        final day = int.tryParse(tx['date'].toString().split('-').last) ?? 1;
+        final amt = double.tryParse(tx['amount'].toString()) ?? 0.0;
+        if (day <= 7) week1 += amt;
+        else if (day <= 14) week2 += amt;
+        else if (day <= 21) week3 += amt;
+        else week4 += amt;
+      }
+    }
+    final maxWeekSpend = [week1, week2, week3, week4].reduce((a, b) => a > b ? a : b);
+    final maxWeekBase = maxWeekSpend > 0 ? maxWeekSpend : 1.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Financial Insights & AI Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              DropdownButton<String>(
+                value: _selectedMonthFilter,
+                items: _availableMonths.map((m) {
+                  return DropdownMenuItem(value: m, child: Text(m == 'All' ? '🗓️ All Months' : '📅 $m'));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedMonthFilter = val);
+                },
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
 
           Row(
@@ -801,6 +867,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
+
+          // 📅 Week-by-Week Spending Breakdown Chart
+          const Text('📅 Week-by-Week Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildBarChartRow('Week 1 (Days 1 - 7)', (week1 / maxWeekBase).clamp(0.0, 1.0), Colors.blue, '$_preferredCurrency ${week1.toStringAsFixed(0)}'),
+                  const SizedBox(height: 10),
+                  _buildBarChartRow('Week 2 (Days 8 - 14)', (week2 / maxWeekBase).clamp(0.0, 1.0), Colors.indigo, '$_preferredCurrency ${week2.toStringAsFixed(0)}'),
+                  const SizedBox(height: 10),
+                  _buildBarChartRow('Week 3 (Days 15 - 21)', (week3 / maxWeekBase).clamp(0.0, 1.0), Colors.orange, '$_preferredCurrency ${week3.toStringAsFixed(0)}'),
+                  const SizedBox(height: 10),
+                  _buildBarChartRow('Week 4 (Days 22 - End)', (week4 / maxWeekBase).clamp(0.0, 1.0), Colors.teal, '$_preferredCurrency ${week4.toStringAsFixed(0)}'),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // 🔮 AI What-If Simulator
           Card(
@@ -861,9 +949,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildBarChartRow('🟢 Income Cashflow', incomePct, Colors.green, '$_preferredCurrency ${_totalIncome.toStringAsFixed(0)}'),
+                  _buildBarChartRow('🟢 Income Cashflow', incomePct, Colors.green, '$_preferredCurrency ${monthIncome.toStringAsFixed(0)}'),
                   const SizedBox(height: 12),
-                  _buildBarChartRow('🔴 Expense Outflow', expensePct, Colors.red, '$_preferredCurrency ${_totalExpense.toStringAsFixed(0)}'),
+                  _buildBarChartRow('🔴 Expense Outflow', expensePct, Colors.red, '$_preferredCurrency ${monthExpense.toStringAsFixed(0)}'),
                 ],
               ),
             ),
@@ -891,7 +979,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('Total Spend', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                        Text('$_preferredCurrency ${_totalExpense.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text('$_preferredCurrency ${monthExpense.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -900,7 +988,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final catName = cat['name'].toString().split(' ').first;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10.0),
-                      child: _buildCategoryProgressRow('${cat['icon']} ${cat['name']}', _getCategoryPct(catName), Colors.orange),
+                      child: _buildCategoryProgressRow('${cat['icon']} ${cat['name']}', _getCategoryPct(catName, monthExpense), Colors.orange),
                     );
                   }),
                 ],
@@ -912,10 +1000,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  double _getCategoryPct(String cat) {
-    if (_totalExpense == 0) return 0.0;
-    final catExp = _transactions.where((t) => t['category'].toString().toLowerCase().contains(cat.toLowerCase()) && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
-    return (catExp / _totalExpense).clamp(0.0, 1.0);
+  double _getCategoryPct(String cat, double totalExp) {
+    if (totalExp == 0) return 0.0;
+    final catExp = _filteredByMonthTransactions.where((t) => t['category'].toString().toLowerCase().contains(cat.toLowerCase()) && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    return (catExp / totalExp).clamp(0.0, 1.0);
   }
 
   Widget _buildBarChartRow(String label, double pct, Color color, String amountStr) {
@@ -1015,7 +1103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (Starts 100% Empty for New Installations)
+  // 4. GOALS TAB
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1494,6 +1582,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final amountController = TextEditingController();
     final noteController = TextEditingController();
     final locationController = TextEditingController();
+    DateTime selectedTxDate = DateTime.now();
+
     String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
     String type = 'expense';
     String selectedAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
@@ -1518,6 +1608,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(isExpense ? 'Add Expense' : 'Add Income', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
+                  
+                  // Date Picker Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('📅 Date: ${selectedTxDate.toIso8601String().substring(0, 10)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedTxDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030),
+                          );
+                          if (picked != null) {
+                            setModalState(() => selectedTxDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.edit_calendar, size: 16),
+                        label: const Text('Change Date'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
                   TextField(
                     controller: amountController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1576,7 +1691,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       final amt = double.tryParse(amountController.text) ?? 0.0;
                       if (amt > 0) {
                         Navigator.pop(context);
-                        _addTransaction(amt, category, type, noteController.text, locationController.text, selectedAccount);
+                        _addTransaction(amt, category, type, noteController.text, locationController.text, selectedAccount, selectedTxDate);
                       }
                     },
                     child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),
