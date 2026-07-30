@@ -267,10 +267,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 await widget.storageService.updateProfileField('dark_mode', _isDarkMode);
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadData,
-            )
           ],
         ),
         body: currentBody,
@@ -740,7 +736,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (Modern Filter & Correct Match)
+  // 2. TRANSACTIONS TAB (High Contrast Summary Metrics)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -793,20 +789,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Filter Summary Metrics Chip Card
-              Card(
-                color: _themeColor.withOpacity(0.08),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Count: ${filtered.length} txs', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text('🟢 In: $_preferredCurrency ${filteredIncome.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
-                      Text('🔴 Out: $_preferredCurrency ${filteredExpense.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
+              // High-Contrast Filter Summary Metrics Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _isDarkMode ? Colors.blue[900]! : Colors.blue[200]!),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Count: ${filtered.length} txs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _isDarkMode ? Colors.white : Colors.blue[900])),
+                    Text('🟢 In: $_preferredCurrency ${filteredIncome.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, color: _isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF15803D), fontWeight: FontWeight.bold)),
+                    Text('🔴 Out: $_preferredCurrency ${filteredExpense.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, color: _isDarkMode ? const Color(0xFFF87171) : const Color(0xFFB91C1C), fontWeight: FontWeight.bold)),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -933,7 +930,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(
                 child: Card(
-                  color: Colors.green[50],
+                  color: _isDarkMode ? Colors.green[900]!.withOpacity(0.3) : Colors.green[50],
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
@@ -949,7 +946,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               Expanded(
                 child: Card(
-                  color: Colors.purple[50],
+                  color: _isDarkMode ? Colors.purple[900]!.withOpacity(0.3) : Colors.purple[50],
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
@@ -991,7 +988,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           // AI What-If Simulator
           Card(
-            color: Colors.blue[50],
+            color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
