@@ -1269,8 +1269,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final monthIncome = monthTxs.where((t) => t['type'] == 'income').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
     final monthExpense = monthTxs.where((t) => t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-    final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
-    final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
+    String healthScoreText = '0 / 100 (No Data)';
+    Color healthColor = Colors.grey;
+
+    if (monthIncome > 0) {
+      final scoreVal = (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100);
+      if (scoreVal >= 70) {
+        healthScoreText = '${scoreVal.toStringAsFixed(0)} / 100 (Healthy)';
+        healthColor = Colors.green;
+      } else if (scoreVal >= 40) {
+        healthScoreText = '${scoreVal.toStringAsFixed(0)} / 100 (Moderate)';
+        healthColor = Colors.orange;
+      } else {
+        healthScoreText = '${scoreVal.toStringAsFixed(0)} / 100 (Needs Care)';
+        healthColor = Colors.red;
+      }
+    } else if (monthExpense > 0) {
+      healthScoreText = '0 / 100 (Overbudget)';
+      healthColor = Colors.red;
+    } else {
+      healthScoreText = '0 / 100 (No Data)';
+      healthColor = Colors.grey;
+    }
+
+    final double runwayMonths = monthExpense > 0
+        ? (_totalNetWorth / monthExpense).clamp(0.0, 99.0)
+        : (_totalNetWorth > 0 ? 99.0 : 0.0);
+
+    final String runwayText = monthExpense > 0
+        ? '${runwayMonths.toStringAsFixed(1)} Months'
+        : (_totalNetWorth > 0 ? '99+ Months (Safe)' : '0.0 Months');
 
     // DYNAMIC AI WHAT-IF SIMULATOR CATEGORIES
     final expenseCategoriesWithTx = _categories.where((cat) {
@@ -1320,15 +1348,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(
                 child: Card(
-                  color: _isDarkMode ? Colors.green[900]!.withOpacity(0.3) : Colors.green[50],
+                  color: _isDarkMode ? healthColor.withOpacity(0.2) : healthColor.withOpacity(0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Health Score', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+                        Text('Health Score', style: TextStyle(fontSize: 11, color: healthColor, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('$healthScore / 100 (Healthy)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green)),
+                        Text(healthScoreText, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: healthColor)),
                       ],
                     ),
                   ),
@@ -1344,7 +1372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         const Text('Emergency Runway', style: TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('${runwayMonths.toStringAsFixed(1)} Months', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple)),
+                        Text(runwayText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.purple)),
                       ],
                     ),
                   ),
