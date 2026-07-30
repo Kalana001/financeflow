@@ -36,7 +36,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _preferredCurrency = 'LKR';
   double _targetMonthlyBudget = 100000.0;
   double _whatIfCutPct = 20.0;
-  String _whatIfCategory = 'Food';
+  String _whatIfCategory = 'Food & Dining';
   
   // Customization & Security States
   String _avatarEmoji = '👨‍💼';
@@ -116,6 +116,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  bool _isCategoryMatch(String txCategory, String targetCategory) {
+    final a = txCategory.trim().toLowerCase();
+    final b = targetCategory.trim().toLowerCase();
+    if (a == b) return true;
+    if (a.contains(b) || b.contains(a)) return true;
+
+    // Clean strings (remove non-alphanumeric/emojis) for robust fallback matching
+    final cleanA = a.replaceAll(RegExp(r'[^\w\s]'), '').trim();
+    final cleanB = b.replaceAll(RegExp(r'[^\w\s]'), '').trim();
+    if (cleanA.isEmpty || cleanB.isEmpty) return false;
+    return cleanA.contains(cleanB) || cleanB.contains(cleanA);
   }
 
   String _formatReminderHour(int hour) {
@@ -962,9 +975,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       bool matchesCat = _filterCategory == 'All';
       if (!matchesCat) {
-        final txCat = (tx['category'] ?? '').toString().toLowerCase();
-        final filterCat = _filterCategory.toLowerCase();
-        matchesCat = txCat.contains(filterCat) || filterCat.contains(txCat);
+        final txCat = (tx['category'] ?? '').toString();
+        matchesCat = _isCategoryMatch(txCat, _filterCategory);
       }
 
       return matchesSearch && matchesCat;
@@ -1058,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Restored AI Simulator & Vertical Bar Chart)
+  // 3. ANALYTICS TAB (With Robust Category Matching Fix)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1068,9 +1080,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
 
-    // AI What-If Simulator Calculation
+    // AI What-If Simulator Calculation with robust matching
     final selectedCatExpenses = monthTxs
-        .where((t) => t['category'].toString().toLowerCase().contains(_whatIfCategory.toLowerCase()) && t['type'] == 'expense')
+        .where((t) => _isCategoryMatch(t['category'].toString(), _whatIfCategory) && t['type'] == 'expense')
         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
     final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
@@ -1160,8 +1172,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       DropdownButton<String>(
-                        value: _whatIfCategory,
-                        items: ['Food', 'Transport', 'Bills', 'Shopping'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        value: _categories.any((c) => c['name'] == _whatIfCategory) ? _whatIfCategory : (_categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining'),
+                        items: _categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
                         onChanged: (val) {
                           if (val != null) setState(() => _whatIfCategory = val);
                         },
@@ -1281,8 +1293,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final catIcon = cat['icon'].toString();
                     final limit = _categoryBudgets[catName] ?? 0.0;
 
+                    // ROBUST BIDIRECTIONAL CATEGORY SPENDING ACCUMULATION FIX
                     final spent = monthTxs
-                        .where((t) => t['category'].toString().toLowerCase().contains(catName.toLowerCase()) && t['type'] == 'expense')
+                        .where((t) => _isCategoryMatch(t['category'].toString(), catName) && (t['type'] == 'expense' || t['type'] == null))
                         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
                     final pct = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
@@ -1323,7 +1336,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
-                              value: limit > 0 ? pct : 0.0,
+                              value: limit > 0 ? pct : (spent > 0 ? 0.3 : 0.0),
                               minHeight: 8,
                               backgroundColor: Colors.grey[200],
                               valueColor: AlwaysStoppedAnimation<Color>(barColor),
@@ -1550,48 +1563,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return AlertDialog(
-              title: const Text('Add Savings Goal'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: targetController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                    decoration: const InputDecoration(labelText: 'Target Amount'),
-                  ),
-                ],
+        return AlertDialog(
+          title: const Text('Add Savings Goal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
+              const SizedBox(height: 12),
+              TextField(
+                controller: targetController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                decoration: const InputDecoration(labelText: 'Target Amount'),
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                ElevatedButton(
-                  onPressed: () {
-                    final t = titleController.text.trim();
-                    final target = double.tryParse(targetController.text) ?? 50000.0;
-                    if (t.isNotEmpty) {
-                      Navigator.pop(context);
-                      setState(() {
-                        _goals.add({
-                          'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
-                          'title': t,
-                          'target': target,
-                          'current': 0.0,
-                          'icon': Icons.stars,
-                          'color': Colors.purple,
-                        });
-                      });
-                    }
-                  },
-                  child: const Text('Create Goal'),
-                ),
-              ],
-            );
-          },
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                final t = titleController.text.trim();
+                final target = double.tryParse(targetController.text) ?? 50000.0;
+                if (t.isNotEmpty) {
+                  Navigator.pop(context);
+                  setState(() {
+                    _goals.add({
+                      'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
+                      'title': t,
+                      'target': target,
+                      'current': 0.0,
+                      'icon': Icons.stars,
+                      'color': Colors.purple,
+                    });
+                  });
+                }
+              },
+              child: const Text('Create Goal'),
+            ),
+          ],
         );
       },
     );
