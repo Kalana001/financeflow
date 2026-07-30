@@ -155,6 +155,11 @@ class LocalStorageService {
     await prefs.setString(_keyCategoryBudgets, jsonEncode(budgets));
   }
 
+  Future<void> saveAllCategoryBudgets(Map<String, double> budgets) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCategoryBudgets, jsonEncode(budgets));
+  }
+
   // ----------------------------------------------------
   // RECURRING TRANSACTIONS & SUBSCRIPTIONS
   // ----------------------------------------------------

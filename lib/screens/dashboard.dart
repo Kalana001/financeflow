@@ -48,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isDarkMode = false;
   Color _themeColor = const Color(0xFF2563EB);
 
-  // Daily Reminder States (Configurable Hour)
+  // Daily Reminder States
   bool _dailyReminderEnabled = true;
   int _dailyReminderHour = 20; // 8:00 PM default
 
@@ -124,6 +124,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '$hour:00 AM';
   }
 
+  DateTime _calculateNextDueDate(String startDateStr, String frequency) {
+    DateTime start = DateTime.tryParse(startDateStr) ?? DateTime.now();
+    DateTime now = DateTime.now();
+    DateTime next = start;
+
+    while (next.isBefore(DateTime(now.year, now.month, now.day))) {
+      if (frequency == 'Weekly') {
+        next = next.add(const Duration(days: 7));
+      } else if (frequency == 'Yearly') {
+        next = DateTime(next.year + 1, next.month, next.day);
+      } else {
+        // Monthly default
+        int nextMonth = next.month + 1;
+        int nextYear = next.year;
+        if (nextMonth > 12) {
+          nextMonth = 1;
+          nextYear += 1;
+        }
+        next = DateTime(nextYear, nextMonth, next.day);
+      }
+    }
+    return next;
+  }
+
   // Available months for filter dropdown
   List<String> get _availableMonths {
     final Set<String> months = {'All'};
@@ -158,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _transactions.any((t) => t['date'] == today);
   }
 
-  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId, DateTime selectedDate, {String? fromAccountId, String? toAccountId, bool isRecurring = false, String frequency = 'Monthly'}) async {
+  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId, DateTime selectedDate, {String? fromAccountId, String? toAccountId, bool isRecurring = false, String frequency = 'Monthly', bool autoLog = false}) async {
     final newTx = {
       'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
       'amount': amount,
@@ -192,6 +216,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'type': type,
         'account_id': accountId,
         'frequency': frequency,
+        'start_date': selectedDate.toIso8601String().substring(0, 10),
+        'auto_log': autoLog,
       });
     }
 
@@ -333,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (Daily Reminder ONLY Visible After Selected Hour)
+  // 1. HOME TAB
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -343,7 +369,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final incomeStr = _stealthMode ? '••••' : _totalIncome.toStringAsFixed(0);
     final expenseStr = _stealthMode ? '••••' : _totalExpense.toStringAsFixed(0);
 
-    // Evaluate exact reminder hour condition
     final currentHour = DateTime.now().hour;
     final isReminderTimeReached = currentHour >= _dailyReminderHour;
 
@@ -370,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Daily Expense Reminder Banner ONLY visible if enabled, not logged today, AND reminder time has arrived!
+          // Daily Expense Reminder Banner
           if (_dailyReminderEnabled && !_hasLoggedToday && isReminderTimeReached) ...[
             Container(
               padding: const EdgeInsets.all(14.0),
@@ -482,7 +507,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Recurring Subscriptions Section
+          // Upgraded Recurring Subscriptions Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -506,20 +531,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ] else ...[
             Column(
               children: _recurringItems.map((rec) {
+                final startDate = rec['start_date'] ?? DateTime.now().toIso8601String().substring(0, 10);
+                final frequency = rec['frequency'] ?? 'Monthly';
+                final nextDue = _calculateNextDueDate(startDate, frequency);
+                final nextDueStr = nextDue.toIso8601String().substring(0, 10);
+                final daysLeft = nextDue.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+                final isAutoLog = rec['auto_log'] == true;
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   child: ListTile(
-                    leading: const CircleAvatar(backgroundColor: Colors.purple, child: Icon(Icons.autorenew, color: Colors.white, size: 18)),
+                    leading: CircleAvatar(backgroundColor: isAutoLog ? Colors.green : Colors.purple, child: Icon(isAutoLog ? Icons.flash_on : Icons.autorenew, color: Colors.white, size: 18)),
                     title: Text(rec['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    subtitle: Text('${rec['frequency']} • ${rec['category']}', style: const TextStyle(fontSize: 11)),
+                    subtitle: Text('⏱️ Next Due: $nextDueStr (${daysLeft == 0 ? "Due Today!" : "In $daysLeft days"}) • ${isAutoLog ? "Auto-Pilot ⚡" : "Confirm Mode 💬"}', style: const TextStyle(fontSize: 11)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('$_preferredCurrency ${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
                         IconButton(
                           icon: const Icon(Icons.play_arrow, color: Colors.green, size: 20),
-                          tooltip: 'Log due transaction now',
+                          tooltip: 'Confirm & Log transaction now',
                           onPressed: () async {
                             await _addTransaction(
                               (double.tryParse(rec['amount'].toString()) ?? 0.0),
@@ -598,7 +630,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showAddSubscriptionModal() {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
+    DateTime startDate = DateTime.now();
     String frequency = 'Monthly';
+    bool autoLog = false;
     String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
 
     showDialog(
@@ -608,29 +642,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
           builder: (context, setModalState) {
             return AlertDialog(
               title: const Text('Add Recurring Subscription'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Subscription Title (e.g. Netflix)')),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                    decoration: const InputDecoration(labelText: 'Amount'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: frequency,
-                    items: const [
-                      DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
-                      DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
-                      DropdownMenuItem(value: 'Yearly', child: Text('Yearly')),
-                    ],
-                    onChanged: (val) => setModalState(() => frequency = val ?? 'Monthly'),
-                    decoration: const InputDecoration(labelText: 'Frequency'),
-                  ),
-                ],
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Subscription Title (e.g. Netflix)')),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                      decoration: const InputDecoration(labelText: 'Amount'),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('📅 Start Date: ${startDate.toIso8601String().substring(0, 10)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: startDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                            );
+                            if (picked != null) setModalState(() => startDate = picked);
+                          },
+                          child: const Text('Pick Date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: frequency,
+                      items: const [
+                        DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                        DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
+                        DropdownMenuItem(value: 'Yearly', child: Text('Yearly')),
+                      ],
+                      onChanged: (val) => setModalState(() => frequency = val ?? 'Monthly'),
+                      decoration: const InputDecoration(labelText: 'Frequency'),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('⚡ Auto-Log without asking'),
+                      subtitle: const Text('If off, asks you to confirm when due'),
+                      value: autoLog,
+                      onChanged: (val) => setModalState(() => autoLog = val),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -647,6 +710,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         'category': category,
                         'type': 'expense',
                         'frequency': frequency,
+                        'start_date': startDate.toIso8601String().substring(0, 10),
+                        'auto_log': autoLog,
                         'account_id': _accounts.isNotEmpty ? _accounts[0]['name'] : 'acc-1',
                       });
                       _loadData();
@@ -993,7 +1058,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (ALL Categories Shown + Single/Bulk Limit Options)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1063,7 +1128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // PER-CATEGORY BUDGETING LIMITS & WARNING BARS
+          // PER-CATEGORY SPENDING & BUDGET LIMITS (ALL Categories Shown)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
@@ -1074,65 +1139,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('🎯 Per-Category Spending Limits', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      TextButton.icon(
-                        onPressed: _showSetCategoryBudgetModal,
-                        icon: const Icon(Icons.edit, size: 14),
-                        label: const Text('Set Limit', style: TextStyle(fontSize: 11)),
+                      const Text('🎯 Category Spending & Budget Caps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: _showSetSingleCategoryBudgetModal,
+                            child: const Text('Set Single', style: TextStyle(fontSize: 11)),
+                          ),
+                          TextButton(
+                            onPressed: _showSetBulkCategoryBudgetModal,
+                            child: const Text('Set All (Bulk)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  if (_categoryBudgets.isEmpty) ...[
-                    const Text('No category budget limits configured. Tap "Set Limit" to track spending caps.', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  ] else ...[
-                    ..._categoryBudgets.entries.map((entry) {
-                      final catName = entry.key;
-                      final limit = entry.value;
+                  const SizedBox(height: 10),
+                  ..._categories.map((cat) {
+                    final catName = cat['name'].toString();
+                    final catIcon = cat['icon'].toString();
+                    final limit = _categoryBudgets[catName] ?? 0.0;
 
-                      final spent = monthTxs
-                          .where((t) => t['category'].toString().toLowerCase().contains(catName.toLowerCase()) && t['type'] == 'expense')
-                          .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+                    final spent = monthTxs
+                        .where((t) => t['category'].toString().toLowerCase().contains(catName.toLowerCase()) && t['type'] == 'expense')
+                        .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-                      final pct = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
+                    final pct = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
 
-                      Color barColor = Colors.green;
-                      String statusBadge = '🟢 Normal';
+                    Color barColor = Colors.blue;
+                    String statusBadge = 'No limit set';
+                    if (limit > 0) {
                       if (spent >= limit) {
                         barColor = Colors.red;
                         statusBadge = '🔴 OVERBUDGET!';
                       } else if (pct >= 0.8) {
                         barColor = Colors.orange;
-                        statusBadge = '🟡 Warning (Near Limit)';
+                        statusBadge = '🟡 Warning (80%+)';
+                      } else {
+                        barColor = Colors.green;
+                        statusBadge = '🟢 Normal';
                       }
+                    }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(catName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                Text('Spent: $_preferredCurrency ${spent.toStringAsFixed(0)} / ${limit.toStringAsFixed(0)} ($statusBadge)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: barColor)),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: pct,
-                                minHeight: 8,
-                                backgroundColor: Colors.grey[200],
-                                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('$catIcon $catName', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              Text(
+                                limit > 0
+                                    ? 'Spent: $_preferredCurrency ${spent.toStringAsFixed(0)} / ${limit.toStringAsFixed(0)} ($statusBadge)'
+                                    : 'Spent: $_preferredCurrency ${spent.toStringAsFixed(0)} (No Limit)',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: barColor),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: limit > 0 ? pct : 0.0,
+                              minHeight: 8,
+                              backgroundColor: Colors.grey[200],
+                              valueColor: AlwaysStoppedAnimation<Color>(barColor),
                             ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -1160,9 +1239,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showSetCategoryBudgetModal() {
+  void _showSetSingleCategoryBudgetModal() {
     String selectedCat = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
-    final controller = TextEditingController();
+    final controller = TextEditingController(text: (_categoryBudgets[selectedCat] ?? 0.0).toStringAsFixed(0));
 
     showDialog(
       context: context,
@@ -1170,14 +1249,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Set Category Budget Limit'),
+              title: const Text('Set Single Category Budget'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedCat,
                     items: _categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
-                    onChanged: (val) => setModalState(() => selectedCat = val ?? selectedCat),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() {
+                          selectedCat = val;
+                          controller.text = (_categoryBudgets[val] ?? 0.0).toStringAsFixed(0);
+                        });
+                      }
+                    },
                     decoration: const InputDecoration(labelText: 'Select Category'),
                   ),
                   const SizedBox(height: 12),
@@ -1194,17 +1280,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     final amt = double.tryParse(controller.text) ?? 0.0;
-                    if (amt > 0) {
-                      Navigator.pop(context);
-                      await widget.storageService.saveCategoryBudget(selectedCat, amt);
-                      _loadData();
-                    }
+                    Navigator.pop(context);
+                    await widget.storageService.saveCategoryBudget(selectedCat, amt);
+                    _loadData();
                   },
                   child: const Text('Save Limit'),
                 ),
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showSetBulkCategoryBudgetModal() {
+    final Map<String, TextEditingController> controllers = {};
+    for (var cat in _categories) {
+      final name = cat['name'].toString();
+      final currentLimit = _categoryBudgets[name] ?? 0.0;
+      controllers[name] = TextEditingController(text: currentLimit > 0 ? currentLimit.toStringAsFixed(0) : '');
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Set Bulk Budget Limits for All'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final cat = _categories[index];
+                final name = cat['name'].toString();
+                final icon = cat['icon'].toString();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: TextField(
+                    controller: controllers[name],
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: InputDecoration(labelText: '$icon $name Limit'),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final Map<String, double> newBudgets = {};
+                controllers.forEach((key, ctrl) {
+                  final amt = double.tryParse(ctrl.text) ?? 0.0;
+                  if (amt > 0) newBudgets[key] = amt;
+                });
+                await widget.storageService.saveAllCategoryBudgets(newBudgets);
+                _loadData();
+              },
+              child: const Text('Save All Limits'),
+            ),
+          ],
         );
       },
     );
@@ -1332,51 +1471,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Savings Goal'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: targetController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                decoration: const InputDecoration(labelText: 'Target Amount'),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Add Savings Goal'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: targetController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Target Amount'),
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final t = titleController.text.trim();
-                final target = double.tryParse(targetController.text) ?? 50000.0;
-                if (t.isNotEmpty) {
-                  Navigator.pop(context);
-                  setState(() {
-                    _goals.add({
-                      'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
-                      'title': t,
-                      'target': target,
-                      'current': 0.0,
-                      'icon': Icons.stars,
-                      'color': Colors.purple,
-                    });
-                  });
-                }
-              },
-              child: const Text('Create Goal'),
-            ),
-          ],
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    final t = titleController.text.trim();
+                    final target = double.tryParse(targetController.text) ?? 50000.0;
+                    if (t.isNotEmpty) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _goals.add({
+                          'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
+                          'title': t,
+                          'target': target,
+                          'current': 0.0,
+                          'icon': Icons.stars,
+                          'color': Colors.purple,
+                        });
+                      });
+                    }
+                  },
+                  child: const Text('Create Goal'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (With Configurable Reminder Time & File Download Copy)
+  // 5. SETTINGS TAB
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1416,7 +1559,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls (With Daily Reminder Time Picker)
+        // SECTION 2: Privacy & Security Controls
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls (100% Offline)'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1481,7 +1624,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 3: Data Backup & Export Data (With Clipboard Copy & Download)
+        // SECTION 3: Data Backup & Report Exporter
         _buildSettingsHeader('3. 💾 Data Backup & Report Exporter'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
