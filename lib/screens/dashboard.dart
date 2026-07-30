@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/local_storage_service.dart';
+import '../utils/file_exporter.dart';
 
 class DashboardScreen extends StatefulWidget {
   final LocalStorageService storageService;
@@ -1582,7 +1583,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // VERTICAL BAR CHART WITH GRADIENTS: INCOME VS EXPENSE CASHFLOW
+          // VERTICAL BAR CHART WITH GRADIENTS: INCOME VS EXPENSE VS NET SAVINGS CASHFLOW
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             child: Padding(
@@ -1590,10 +1591,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('📊 Cashflow Comparison (Vertical Bar Chart)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('📊 Cashflow Comparison (Vertical Bar Chart)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Text(_selectedMonthFilter == 'All' ? '🗓️ All Time' : '📅 $_selectedMonthFilter', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 20),
                   SizedBox(
-                    height: 160,
+                    height: 165,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -1602,10 +1613,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text('$_preferredCurrency ${monthIncome.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green)),
+                            Text('$_preferredCurrency ${monthIncome.toStringAsFixed(0)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
                             const SizedBox(height: 6),
                             Container(
-                              width: 48,
+                              width: 44,
                               height: (120 * (monthIncome / maxCashflowBase)).clamp(10.0, 120.0),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
@@ -1618,17 +1629,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text('🟢 Income', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            const Text('🟢 Income', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         // Vertical Bar 2: Expense Gradient
                         Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text('$_preferredCurrency ${monthExpense.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red)),
+                            Text('$_preferredCurrency ${monthExpense.toStringAsFixed(0)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
                             const SizedBox(height: 6),
                             Container(
-                              width: 48,
+                              width: 44,
                               height: (120 * (monthExpense / maxCashflowBase)).clamp(10.0, 120.0),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
@@ -1641,7 +1652,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text('🔴 Expense', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            const Text('🔴 Expense', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        // Vertical Bar 3: Net Savings Cashflow
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text('$_preferredCurrency ${(monthIncome - monthExpense).toStringAsFixed(0)}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: (monthIncome - monthExpense) >= 0 ? Colors.blue : Colors.red)),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 44,
+                              height: (120 * ((monthIncome - monthExpense).abs() / maxCashflowBase)).clamp(10.0, 120.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: (monthIncome - monthExpense) >= 0
+                                      ? [const Color(0xFF60A5FA), const Color(0xFF2563EB)]
+                                      : [const Color(0xFFF87171), const Color(0xFFDC2626)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('🔵 Net Savings', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ],
@@ -2208,11 +2244,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                title: const Text('📄 Export Executive PDF Statement'),
-                subtitle: const Text('Download / Copy printable financial report'),
+                title: const Text('📄 Export Executive Statement (PDF / Text)'),
+                subtitle: const Text('Download printable financial report file directly'),
                 trailing: const Icon(Icons.download),
                 onTap: () async {
                   final reportStr = await widget.storageService.generatePdfStatementReport();
+                  downloadFile(reportStr, 'financeflow_executive_statement.txt', 'text/plain');
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -2221,14 +2258,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       content: SingleChildScrollView(child: SelectableText(reportStr, style: const TextStyle(fontFamily: 'monospace', fontSize: 11))),
                       actions: [
                         ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                          icon: const Icon(Icons.download, size: 16, color: Colors.white),
+                          label: const Text('Download File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            downloadFile(reportStr, 'financeflow_executive_statement.txt', 'text/plain');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('📥 File download triggered for Executive Statement!')),
+                            );
+                          },
+                        ),
+                        ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
                           icon: const Icon(Icons.copy, size: 16, color: Colors.white),
-                          label: const Text('Copy Report', style: TextStyle(color: Colors.white)),
+                          label: const Text('Copy Text', style: TextStyle(color: Colors.white)),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: reportStr));
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('📋 Executive PDF Statement copied to clipboard! You can save as a document file.')),
+                              const SnackBar(content: Text('📋 Executive Statement copied to clipboard!')),
                             );
                           },
                         ),
@@ -2242,10 +2290,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ListTile(
                 leading: const Icon(Icons.table_chart, color: Colors.green),
                 title: const Text('Export Data to CSV / Excel'),
-                subtitle: const Text('Download / Copy transactions spreadsheet'),
+                subtitle: const Text('Download transactions spreadsheet (.csv) file directly'),
                 trailing: const Icon(Icons.download),
                 onTap: () async {
                   final csvStr = await widget.storageService.exportCsvData();
+                  downloadFile(csvStr, 'financeflow_transactions.csv', 'text/csv');
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -2254,14 +2303,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       content: SingleChildScrollView(child: SelectableText(csvStr, style: const TextStyle(fontSize: 11))),
                       actions: [
                         ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                          icon: const Icon(Icons.download, size: 16, color: Colors.white),
+                          label: const Text('Download CSV File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            downloadFile(csvStr, 'financeflow_transactions.csv', 'text/csv');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('📥 File download triggered for financeflow_transactions.csv!')),
+                            );
+                          },
+                        ),
+                        ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
                           icon: const Icon(Icons.copy, size: 16, color: Colors.white),
-                          label: const Text('Copy CSV Data', style: TextStyle(color: Colors.white)),
+                          label: const Text('Copy CSV', style: TextStyle(color: Colors.white)),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: csvStr));
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('📋 CSV Spreadsheet data copied to clipboard! You can paste and save as a .csv file.')),
+                              const SnackBar(content: Text('📋 CSV data copied to clipboard!')),
                             );
                           },
                         ),
