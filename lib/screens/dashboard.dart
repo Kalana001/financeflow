@@ -124,7 +124,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (a == b) return true;
     if (a.contains(b) || b.contains(a)) return true;
 
-    // Clean strings (remove non-alphanumeric/emojis) for robust fallback matching
     final cleanA = a.replaceAll(RegExp(r'[^\w\s]'), '').trim();
     final cleanB = b.replaceAll(RegExp(r'[^\w\s]'), '').trim();
     if (cleanA.isEmpty || cleanB.isEmpty) return false;
@@ -1070,7 +1069,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Robust Category Matching Fix)
+  // 3. ANALYTICS TAB (With Dynamic AI Simulator Category Options)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1080,12 +1079,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
 
-    // AI What-If Simulator Calculation with robust matching
+    // DYNAMIC AI WHAT-IF SIMULATOR CATEGORIES (Only categories with actual recorded expense transactions)
+    final expenseCategoriesWithTx = _categories.where((cat) {
+      final cName = cat['name'].toString();
+      return monthTxs.any((t) => (t['type'] == 'expense' || t['type'] == null) && _isCategoryMatch(t['category'].toString(), cName));
+    }).toList();
+
+    final activeSimCategories = expenseCategoriesWithTx.isNotEmpty ? expenseCategoriesWithTx : _categories;
+
+    final currentSimCat = activeSimCategories.any((c) => c['name'] == _whatIfCategory)
+        ? _whatIfCategory
+        : (activeSimCategories.isNotEmpty ? activeSimCategories[0]['name'].toString() : 'Food & Dining');
+
     final selectedCatExpenses = monthTxs
-        .where((t) => _isCategoryMatch(t['category'].toString(), _whatIfCategory) && t['type'] == 'expense')
+        .where((t) => _isCategoryMatch(t['category'].toString(), currentSimCat) && (t['type'] == 'expense' || t['type'] == null))
         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-    final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
+    final monthlySavings = selectedCatExpenses * (_whatIfCutPct / 100.0);
+    final sixMonthSavings = monthlySavings * 6;
 
     final maxCashflow = [monthIncome, monthExpense].reduce((a, b) => a > b ? a : b);
     final maxCashflowBase = maxCashflow > 0 ? maxCashflow : 1.0;
@@ -1150,7 +1161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // RESTORED AI WHAT-IF PREDICTIVE SIMULATOR
+          // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD
           Card(
             color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -1168,20 +1179,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: _categories.any((c) => c['name'] == _whatIfCategory) ? _whatIfCategory : (_categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining'),
-                        items: _categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _whatIfCategory = val);
-                        },
+                      Row(
+                        children: [
+                          const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          DropdownButton<String>(
+                            value: currentSimCat,
+                            items: activeSimCategories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
+                            onChanged: (val) {
+                              if (val != null) setState(() => _whatIfCategory = val);
+                            },
+                          ),
+                        ],
                       ),
+                      Text('Spent: $_preferredCurrency ${selectedCatExpenses.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('What if I reduce $_whatIfCategory expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text('What if I reduce $currentSimCat expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   Slider(
                     value: _whatIfCutPct,
                     min: 0,
@@ -1190,9 +1207,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     label: '${_whatIfCutPct.toStringAsFixed(0)}%',
                     onChanged: (val) => setState(() => _whatIfCutPct = val),
                   ),
-                  Text(
-                    '👉 Projected 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 13),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('💵 Monthly Savings: +$_preferredCurrency ${monthlySavings.toStringAsFixed(0)} / mo', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
+                      Text('🚀 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 12)),
+                    ],
                   ),
                 ],
               ),
@@ -1293,7 +1313,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final catIcon = cat['icon'].toString();
                     final limit = _categoryBudgets[catName] ?? 0.0;
 
-                    // ROBUST BIDIRECTIONAL CATEGORY SPENDING ACCUMULATION FIX
                     final spent = monthTxs
                         .where((t) => _isCategoryMatch(t['category'].toString(), catName) && (t['type'] == 'expense' || t['type'] == null))
                         .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
