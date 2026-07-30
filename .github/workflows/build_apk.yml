@@ -44,6 +44,7 @@ jobs:
           git checkout android/app/src/main/AndroidManifest.xml || true
           git checkout lib/
           git checkout pubspec.yaml
+          git checkout assets/ || true
 
       # 6. Install dependencies
       - name: Install Dependencies
