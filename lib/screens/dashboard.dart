@@ -47,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _pinLockEnabled = false;
   String _pinCode = '1234';
   bool _isDarkMode = false;
-  Color _themeColor = const Color(0xFF2563EB);
+  Color _themeColor = const Color(0xFF4F46E5); // Modern Indigo Default
 
   // Daily Reminder States
   bool _dailyReminderEnabled = true;
@@ -148,7 +148,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else if (frequency == 'Yearly') {
         next = DateTime(next.year + 1, next.month, next.day);
       } else {
-        // Monthly default
         int nextMonth = next.month + 1;
         int nextYear = next.year;
         if (nextMonth > 12) {
@@ -161,7 +160,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return next;
   }
 
-  // Available months for filter dropdown
   List<String> get _availableMonths {
     final Set<String> months = {'All'};
     for (var tx in _transactions) {
@@ -173,7 +171,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return months.toList();
   }
 
-  // Filtered transactions by selected month
   List<Map<String, dynamic>> get _filteredByMonthTransactions {
     if (_selectedMonthFilter == 'All') return _transactions;
     return _transactions.where((t) => t['date'].toString().startsWith(_selectedMonthFilter)).toList();
@@ -243,12 +240,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: const Text('⚠️ OTP Verification Required'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.shield, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('OTP Security Authorization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'This expense of $_preferredCurrency ${_pendingHighValueTx!['amount']} exceeds the LKR 50,000 security threshold. Enter OTP code to authorize (Try 123456).',
+                'This transaction of $_preferredCurrency ${_pendingHighValueTx!['amount']} exceeds the high-value security threshold. Enter code to authorize (Try 123456).',
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 16),
@@ -256,7 +260,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 controller: _otpController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(labelText: '6-Digit Verification OTP'),
+                decoration: const InputDecoration(
+                  labelText: '6-Digit Verification OTP',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                ),
               ),
             ],
           ),
@@ -269,6 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 if (_otpController.text == '123456' || _otpController.text == '123') {
                   Navigator.pop(context);
@@ -285,7 +293,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   );
                 }
               },
-              child: const Text('Verify'),
+              child: const Text('Verify & Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -304,17 +312,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('➕ Create New Category'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Text('➕ Create Custom Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Category Name (e.g. Gaming)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Category Name (e.g. Gaming)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   const Text('Select Icon/Emoji:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -322,6 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return ChoiceChip(
                         label: Text(ic, style: const TextStyle(fontSize: 18)),
                         selected: selectedIcon == ic,
+                        selectedColor: _themeColor.withOpacity(0.2),
                         onSelected: (_) => setModalState(() => selectedIcon = ic),
                       );
                     }).toList(),
@@ -331,6 +344,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final name = nameController.text.trim();
                     if (name.isNotEmpty) {
@@ -340,7 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Navigator.pop(context, name);
                     }
                   },
-                  child: const Text('Save Category'),
+                  child: const Text('Save Category', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -352,24 +366,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildBottomNavItem(int index, IconData icon, String label) {
     final isSelected = _currentTab == index;
-    final color = isSelected ? _themeColor : Colors.grey[500];
+    final color = isSelected ? _themeColor : (_isDarkMode ? Colors.grey[400] : Colors.grey[600]);
 
     return InkWell(
       onTap: () => setState(() => _currentTab = index),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 20),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isSelected ? _themeColor.withOpacity(0.15) : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 color: color,
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ],
@@ -381,7 +403,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: _themeColor),
+              const SizedBox(height: 16),
+              const Text('Loading FinanceFlow...', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
     }
 
     final themeData = ThemeData(
@@ -421,14 +454,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
       data: themeData,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
+          elevation: 0,
+          scaffoldBackgroundColor: Colors.transparent,
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [_themeColor, _themeColor.withOpacity(0.7)]),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'FinanceFlow',
+                style: TextStyle(
+                  fontFamily: 'Outfit',
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                  color: _isDarkMode ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
           actions: [
-            IconButton(
-              icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
-              onPressed: () async {
-                setState(() => _isDarkMode = !_isDarkMode);
-                await widget.storageService.updateProfileField('dark_mode', _isDarkMode);
-              },
+            Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: _isDarkMode ? const Color(0xFF1E293B) : Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode, size: 20, color: _isDarkMode ? Colors.amber : Colors.indigo),
+                onPressed: () async {
+                  setState(() => _isDarkMode = !_isDarkMode);
+                  await widget.storageService.updateProfileField('dark_mode', _isDarkMode);
+                },
+              ),
             ),
           ],
         ),
@@ -439,8 +502,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: _themeColor.withOpacity(0.4),
-                blurRadius: 16,
+                color: _themeColor.withOpacity(0.45),
+                blurRadius: 18,
                 spreadRadius: 2,
                 offset: const Offset(0, 4),
               ),
@@ -459,7 +522,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         bottomNavigationBar: BottomAppBar(
           shape: const CircularNotchedRectangle(),
           notchMargin: 8.0,
-          elevation: 10,
+          elevation: 12,
           color: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2.0),
@@ -504,17 +567,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Hello, ${_profile['name'] ?? 'Alex'}! 👋', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Hello, ${_profile['name'] ?? 'Alex'}! 👋', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const Text('Your private wealth dashboard.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
-              CircleAvatar(
-                backgroundColor: _themeColor.withOpacity(0.15),
-                child: Text(_avatarEmoji, style: const TextStyle(fontSize: 20)),
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _themeColor.withOpacity(0.3), width: 2),
+                ),
+                child: CircleAvatar(
+                  backgroundColor: _themeColor.withOpacity(0.15),
+                  radius: 20,
+                  child: Text(_avatarEmoji, style: const TextStyle(fontSize: 20)),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           // Daily Expense Reminder Banner
           if (_dailyReminderEnabled && !_hasLoggedToday && isReminderTimeReached) ...[
@@ -522,8 +593,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(14.0),
               decoration: BoxDecoration(
                 color: Colors.amber[50],
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.amber[300]!),
+                boxShadow: [BoxShadow(color: Colors.amber.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
               ),
               child: Row(
                 children: [
@@ -539,24 +611,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                     onPressed: () => _showAddTransactionBottomSheet(),
-                    child: const Text('Log Now', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    child: const Text('Log Now', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
 
           // Total Net Worth Card (With Stealth Peek Eye Button 👁️)
           Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [_themeColor, _themeColor.withOpacity(0.85)]),
-              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [_themeColor, _themeColor.withOpacity(0.85), _themeColor.withOpacity(0.7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(22),
               boxShadow: [
-                BoxShadow(color: _themeColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+                BoxShadow(color: _themeColor.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 8)),
               ],
             ),
             child: Column(
@@ -565,7 +641,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('TOTAL NET WORTH (ALL WALLETS)', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    const Text('TOTAL NET WORTH (ALL WALLETS)', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -588,7 +664,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 18),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.25)),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -601,7 +681,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // Accounts & Wallets Section
           Row(
@@ -610,7 +690,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Expanded(
                 child: Text(
                   'My Accounts & Wallets',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -632,7 +712,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }).toList(),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // Upgraded Recurring Subscriptions Section (With Checkmark Icon & Early Payment Dialog)
           Row(
@@ -641,7 +721,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Expanded(
                 child: Text(
                   '🔁 Subscriptions & Recurring Bills',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -655,9 +735,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 6),
           if (_recurringItems.isEmpty) ...[
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: const Padding(
-                padding: EdgeInsets.all(14.0),
+                padding: EdgeInsets.all(16.0),
                 child: Text('No recurring subscriptions added yet (e.g. Netflix, Wi-Fi, Rent). Tap "Add Sub" above.', style: TextStyle(fontSize: 11, color: Colors.grey)),
               ),
             ),
@@ -673,9 +753,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: _isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                  ),
                   child: ListTile(
-                    leading: CircleAvatar(backgroundColor: isAutoLog ? Colors.green : Colors.purple, child: Icon(isAutoLog ? Icons.flash_on : Icons.autorenew, color: Colors.white, size: 18)),
+                    leading: CircleAvatar(
+                      backgroundColor: isAutoLog ? Colors.green.withOpacity(0.15) : Colors.purple.withOpacity(0.15),
+                      child: Icon(isAutoLog ? Icons.flash_on : Icons.autorenew, color: isAutoLog ? Colors.green : Colors.purple, size: 20),
+                    ),
                     title: Text(rec['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     subtitle: Text('⏱️ Next Due: $nextDueStr (${daysLeft == 0 ? "Due Today!" : "In $daysLeft days"}) • ${isAutoLog ? "Auto-Pilot ⚡" : "Confirm Mode 💬"}', style: const TextStyle(fontSize: 11)),
                     trailing: Row(
@@ -694,11 +780,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }).toList(),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // Target Budget Card
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(color: _isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -724,10 +813,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 8),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
                       value: budgetPct,
-                      minHeight: 8,
+                      minHeight: 10,
                       backgroundColor: Colors.grey[200],
                       valueColor: AlwaysStoppedAnimation<Color>(_totalExpense > _targetMonthlyBudget ? Colors.red : _themeColor),
                     ),
@@ -741,7 +830,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
         ],
       ),
     );
@@ -758,6 +847,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Text('Confirm Subscription Payment: ${rec['title']}'),
               content: SingleChildScrollView(
                 child: Column(
@@ -799,11 +889,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     Navigator.pop(context);
                     final amt = (double.tryParse(rec['amount'].toString()) ?? 0.0);
                     
-                    // 1. Log transaction with selected date and wallet
                     await _addTransaction(
                       amt,
                       rec['category'],
@@ -814,7 +904,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       txDate,
                     );
 
-                    // 2. Automatically advance next due date cycle
                     final frequency = rec['frequency'] ?? 'Monthly';
                     DateTime nextCycleDate = txDate;
                     if (frequency == 'Weekly') {
@@ -845,7 +934,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       SnackBar(content: Text('Logged ${rec['title']} payment! Next due date updated to ${rec['start_date']}.')),
                     );
                   },
-                  child: const Text('Confirm Payment'),
+                  child: const Text('Confirm Payment', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -871,6 +960,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Add Recurring Subscription'),
               content: SingleChildScrollView(
                 child: Column(
@@ -954,6 +1044,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final t = titleController.text.trim();
                     final amt = double.tryParse(amountController.text) ?? 0.0;
@@ -973,7 +1064,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _loadData();
                     }
                   },
-                  child: const Text('Save Subscription'),
+                  child: const Text('Save Subscription', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -988,26 +1079,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: () => _showAccountDetailModal(id, name, balance, rawAcc),
       child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(_isDarkMode ? 0.2 : 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(iconStr, style: const TextStyle(fontSize: 16)),
-                const SizedBox(width: 6),
+                CircleAvatar(
+                  backgroundColor: _themeColor.withOpacity(0.12),
+                  radius: 14,
+                  child: Text(iconStr, style: const TextStyle(fontSize: 14)),
+                ),
+                const SizedBox(width: 8),
                 Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
-            const SizedBox(height: 6),
-            Text('$_preferredCurrency $balStr', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : (_isDarkMode ? Colors.white : Colors.black87))),
+            const SizedBox(height: 8),
+            Text('$_preferredCurrency $balStr', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: balance < 0 ? Colors.red : (_isDarkMode ? Colors.white : Colors.black87))),
           ],
         ),
       ),
@@ -1020,6 +1117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Set Monthly Target Budget'),
           content: TextField(
             controller: controller,
@@ -1030,13 +1128,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 final amt = double.tryParse(controller.text) ?? 100000.0;
                 Navigator.pop(context);
                 setState(() => _targetMonthlyBudget = amt);
                 await widget.storageService.updateProfileField('monthly_budget', amt);
               },
-              child: const Text('Save Budget'),
+              child: const Text('Save Budget', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -1050,6 +1149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.all(20.0),
@@ -1092,6 +1192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Edit Wallet Details'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1122,6 +1223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final n = nameController.text.trim();
                     final bal = double.tryParse(openingController.text) ?? 0.0;
@@ -1131,7 +1233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _loadData();
                     }
                   },
-                  child: const Text('Update Wallet'),
+                  child: const Text('Update Wallet', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1152,6 +1254,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Add Custom Account / Wallet'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1182,6 +1285,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final name = nameController.text.trim();
                     final bal = double.tryParse(balanceController.text) ?? 0.0;
@@ -1198,7 +1302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _loadData();
                     }
                   },
-                  child: const Text('Create Wallet'),
+                  child: const Text('Create Wallet', style: TextStyle(color: Colors.white)),
                 )
               ],
             );
@@ -1242,7 +1346,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.search),
                         hintText: 'Search notes or categories...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(14))),
                       ),
                       onChanged: (val) => setState(() => _searchQuery = val),
                     ),
@@ -1266,7 +1370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: _isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _isDarkMode ? Colors.blue[900]! : Colors.blue[200]!),
                 ),
                 child: Row(
@@ -1351,7 +1455,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? '${runwayMonths.toStringAsFixed(1)} Months'
         : (_totalNetWorth > 0 ? '99+ Months (Safe)' : '0.0 Months');
 
-    // DYNAMIC AI WHAT-IF SIMULATOR CATEGORIES
     final expenseCategoriesWithTx = _categories.where((cat) {
       final cName = cat['name'].toString();
       return monthTxs.any((t) => (t['type'] == 'expense' || t['type'] == null) && _isCategoryMatch(t['category'].toString(), cName));
@@ -1399,6 +1502,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(
                 child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   color: _isDarkMode ? healthColor.withOpacity(0.2) : healthColor.withOpacity(0.1),
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
@@ -1415,6 +1519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               Expanded(
                 child: Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   color: _isDarkMode ? Colors.purple[900]!.withOpacity(0.3) : Colors.purple[50],
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
@@ -1436,7 +1541,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD
           Card(
             color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: Colors.blue[200]!)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -1478,6 +1583,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     min: 0,
                     max: 50,
                     divisions: 10,
+                    activeColor: _themeColor,
                     label: '${_whatIfCutPct.toStringAsFixed(0)}%',
                     onChanged: (val) => setState(() => _whatIfCutPct = val),
                   ),
@@ -1495,9 +1601,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // VERTICAL BAR CHART: INCOME VS EXPENSE CASHFLOW
+          // VERTICAL BAR CHART WITH GRADIENTS: INCOME VS EXPENSE CASHFLOW
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -1511,7 +1617,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Vertical Bar 1: Income
+                        // Vertical Bar 1: Income Gradient
                         Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -1521,15 +1627,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               width: 48,
                               height: (120 * (monthIncome / maxCashflowBase)).clamp(10.0, 120.0),
                               decoration: BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF34D399), Color(0xFF059669)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))],
                               ),
                             ),
                             const SizedBox(height: 8),
                             const Text('🟢 Income', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           ],
                         ),
-                        // Vertical Bar 2: Expense
+                        // Vertical Bar 2: Expense Gradient
                         Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -1539,8 +1650,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               width: 48,
                               height: (120 * (monthExpense / maxCashflowBase)).clamp(10.0, 120.0),
                               decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFF87171), Color(0xFFDC2626)],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                                boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))],
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -1558,7 +1674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           // PER-CATEGORY SPENDING & BUDGET LIMITS (ALL Categories Shown)
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -1646,7 +1762,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(height: 4),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
                               value: limit > 0 ? pct : (spent > 0 ? 0.3 : 0.0),
                               minHeight: 8,
@@ -1678,6 +1794,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Set Single Category Budget'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1707,13 +1824,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final amt = double.tryParse(controller.text) ?? 0.0;
                     Navigator.pop(context);
                     await widget.storageService.saveCategoryBudget(selectedCat, amt);
                     _loadData();
                   },
-                  child: const Text('Save Limit'),
+                  child: const Text('Save Limit', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1735,6 +1853,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Set Bulk Budget Limits for All'),
           content: SizedBox(
             width: double.maxFinite,
@@ -1760,6 +1879,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 Navigator.pop(context);
                 final Map<String, double> newBudgets = {};
@@ -1770,7 +1890,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 await widget.storageService.saveAllCategoryBudgets(newBudgets);
                 _loadData();
               },
-              child: const Text('Save All Limits'),
+              child: const Text('Save All Limits', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -1792,9 +1912,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text('Financial Goals', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 onPressed: _showAddGoalModal,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add Goal'),
+                icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                label: const Text('Add Goal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               )
             ],
           ),
@@ -1805,7 +1926,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
                 child: Column(
                   children: [
-                    Icon(Icons.track_changes, size: 64, color: Colors.blue[300]),
+                    Icon(Icons.track_changes, size: 64, color: _themeColor.withOpacity(0.5)),
                     const SizedBox(height: 16),
                     const Text('No Savings Goals Added Yet!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
@@ -1826,7 +1947,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -1834,7 +1955,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Row(
                         children: [
-                          const CircleAvatar(backgroundColor: Color(0xFFF3E8FF), child: Icon(Icons.stars, color: Colors.purple)),
+                          CircleAvatar(backgroundColor: Colors.purple.withOpacity(0.15), child: const Icon(Icons.stars, color: Colors.purple)),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -1874,8 +1995,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.purple,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             icon: const Icon(Icons.add, size: 16, color: Colors.white),
                             label: const Text('Add Money / Deposit', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1901,6 +2022,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('Deposit to ${goal['title']}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1916,6 +2038,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 final amt = double.tryParse(depositController.text) ?? 0.0;
                 if (amt > 0) {
@@ -1929,7 +2052,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   await widget.storageService.saveGoals(_goals);
                 }
               },
-              child: const Text('Deposit Money'),
+              child: const Text('Deposit Money', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -1947,6 +2070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Add Savings Goal'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1964,6 +2088,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final t = titleController.text.trim();
                     final target = double.tryParse(targetController.text) ?? 50000.0;
@@ -1981,7 +2106,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       await widget.storageService.saveGoals(_goals);
                     }
                   },
-                  child: const Text('Create Goal'),
+                  child: const Text('Create Goal', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -1998,10 +2123,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        // SECTION 1: Profile & Financial Preferences
         _buildSettingsHeader('1. 👤 Profile & Financial Preferences'),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           child: Column(
             children: [
               ListTile(
@@ -2032,10 +2156,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls'),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           child: Column(
             children: [
               SwitchListTile(
@@ -2097,10 +2220,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 3: Data Backup & Report Exporter
         _buildSettingsHeader('3. 💾 Data Backup & Report Exporter'),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           child: Column(
             children: [
               ListTile(
@@ -2113,12 +2235,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       title: const Text('Executive Financial Statement Report'),
                       content: SingleChildScrollView(child: SelectableText(reportStr, style: const TextStyle(fontFamily: 'monospace', fontSize: 11))),
                       actions: [
                         ElevatedButton.icon(
-                          icon: const Icon(Icons.copy, size: 16),
-                          label: const Text('Copy Report'),
+                          style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                          icon: const Icon(Icons.copy, size: 16, color: Colors.white),
+                          label: const Text('Copy Report', style: TextStyle(color: Colors.white)),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: reportStr));
                             Navigator.pop(context);
@@ -2144,12 +2268,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       title: const Text('Exported CSV Spreadsheet'),
                       content: SingleChildScrollView(child: SelectableText(csvStr, style: const TextStyle(fontSize: 11))),
                       actions: [
                         ElevatedButton.icon(
-                          icon: const Icon(Icons.copy, size: 16),
-                          label: const Text('Copy CSV Data'),
+                          style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                          icon: const Icon(Icons.copy, size: 16, color: Colors.white),
+                          label: const Text('Copy CSV Data', style: TextStyle(color: Colors.white)),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: csvStr));
                             Navigator.pop(context);
@@ -2173,6 +2299,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       title: const Text('Reset Profile & Data?'),
                       content: const Text('This will wipe all local wallets and transactions. Cannot be undone!'),
                       actions: [
@@ -2193,10 +2320,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 4: Themes & Accent Color Palette
         _buildSettingsHeader('4. 🎨 Themes & Accent Color Palette'),
         Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -2219,7 +2345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildThemeColorOption('Royal Blue 💙', const Color(0xFF2563EB)),
+                    _buildThemeColorOption('Indigo 💙', const Color(0xFF4F46E5)),
                     _buildThemeColorOption('Emerald 💚', const Color(0xFF10B981)),
                     _buildThemeColorOption('Purple 💜', const Color(0xFF8B5CF6)),
                     _buildThemeColorOption('Midnight 🌙', const Color(0xFF1E293B)),
@@ -2240,6 +2366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Set 4-Digit Security PIN'),
           content: TextField(
             controller: pinController,
@@ -2252,6 +2379,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 final p = pinController.text.trim();
                 if (p.length == 4) {
@@ -2264,7 +2392,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   await widget.storageService.updateProfileField('pin_code', p);
                 }
               },
-              child: const Text('Save PIN'),
+              child: const Text('Save PIN', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -2310,6 +2438,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: const Text('Edit Profile & Avatar'),
               content: SingleChildScrollView(
                 child: Column(
@@ -2336,6 +2465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   onPressed: () async {
                     final n = nameController.text.trim();
                     if (n.isNotEmpty) {
@@ -2348,7 +2478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       await widget.storageService.updateProfileField('avatar_emoji', selectedAvatar);
                     }
                   },
-                  child: const Text('Save Profile'),
+                  child: const Text('Save Profile', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -2391,18 +2521,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return Dismissible(
           key: Key(tx['id'] ?? index.toString()),
-          background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 16), child: const Icon(Icons.delete, color: Colors.white)),
+          background: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
           onDismissed: (_) async {
             await widget.storageService.deleteTransaction(tx['id']);
             _loadData();
           },
           child: Card(
             margin: const EdgeInsets.only(bottom: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: _isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            ),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: leadingColor.withOpacity(0.1),
-                child: Icon(leadingIcon, color: leadingColor),
+                backgroundColor: leadingColor.withOpacity(0.12),
+                child: Icon(leadingIcon, color: leadingColor, size: 20),
               ),
               title: Text(tx['notes'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
               subtitle: Text(subtitleText, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
@@ -2431,6 +2570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -2478,7 +2618,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       controller: amountController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                      decoration: const InputDecoration(labelText: 'Amount'),
+                      decoration: const InputDecoration(labelText: 'Amount', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -2489,7 +2629,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         DropdownMenuItem(value: 'transfer', child: Text('Inter-Wallet Transfer 🔄')),
                       ],
                       onChanged: (val) => setModalState(() => type = val ?? 'expense'),
-                      decoration: const InputDecoration(labelText: 'Transaction Type'),
+                      decoration: const InputDecoration(labelText: 'Transaction Type', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                     ),
                     const SizedBox(height: 12),
 
@@ -2498,21 +2638,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         value: fromAccount,
                         items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
                         onChanged: (val) => setModalState(() => fromAccount = val ?? fromAccount),
-                        decoration: const InputDecoration(labelText: 'From Source Wallet'),
+                        decoration: const InputDecoration(labelText: 'From Source Wallet', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         value: toAccount,
                         items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
                         onChanged: (val) => setModalState(() => toAccount = val ?? toAccount),
-                        decoration: const InputDecoration(labelText: 'To Destination Wallet'),
+                        decoration: const InputDecoration(labelText: 'To Destination Wallet', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                       ),
                     ] else ...[
                       DropdownButtonFormField<String>(
                         value: fromAccount,
                         items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
                         onChanged: (val) => setModalState(() => fromAccount = val ?? fromAccount),
-                        decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account'),
+                        decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account', border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
@@ -2531,18 +2671,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             setModalState(() => category = val);
                           }
                         },
-                        decoration: const InputDecoration(labelText: 'Category'),
+                        decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                       ),
                     ],
 
                     const SizedBox(height: 12),
                     TextField(
                       controller: noteController,
-                      decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut, Rent, ATM Cash Withdrawal)'),
+                      decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut, Rent, ATM Cash Withdrawal)', border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)))),
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _themeColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                       onPressed: () {
                         final amt = double.tryParse(amountController.text) ?? 0.0;
                         if (amt > 0) {
@@ -2560,7 +2704,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           );
                         }
                       },
-                      child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),
+                      child: const Text('Save Transaction', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
                     ),
                     const SizedBox(height: 24),
                   ],
