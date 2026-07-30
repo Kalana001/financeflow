@@ -1181,7 +1181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   Wrap(
                     alignment: WrapAlignment.spaceBetween,
-                    crossAlignment: WrapCrossAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Row(
                         mainAxisSize: MainAxisSize.min,
