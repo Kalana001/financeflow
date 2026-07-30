@@ -46,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isDarkMode = false;
   Color _themeColor = const Color(0xFF2563EB);
 
-  // 20+ Avatar Palette Choices
+  // 24 Avatar Palette Choices
   final List<String> _avatars = [
     '👨‍💼', '👩‍💼', '🚀', '💎', '🦁', '👑', '🦊', '🤖',
     '🦄', '🐯', '🦅', '🎯', '⚡', '🔥', '🌟', '🏆',
@@ -268,13 +268,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
             ),
             IconButton(
-              icon: Icon(_stealthMode ? Icons.visibility_off : Icons.visibility),
-              onPressed: () async {
-                setState(() => _stealthMode = !_stealthMode);
-                await widget.storageService.updateProfileField('stealth_mode', _stealthMode);
-              },
-            ),
-            IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _loadData,
             )
@@ -305,7 +298,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (With Stealth Eye Icon on Card)
+  // 1. HOME TAB (With Stealth Eye Icon on Net Worth Card)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -747,13 +740,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (Redesigned Executive History)
+  // 2. TRANSACTIONS TAB (Modern Filter & Correct Match)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
       final matchesSearch = (tx['notes'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (tx['category'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCat = _filterCategory == 'All' || tx['category'] == _filterCategory;
+      
+      bool matchesCat = _filterCategory == 'All';
+      if (!matchesCat) {
+        final txCat = (tx['category'] ?? '').toString().toLowerCase();
+        final filterCat = _filterCategory.toLowerCase();
+        matchesCat = txCat.contains(filterCat) || filterCat.contains(txCat);
+      }
+
       return matchesSearch && matchesCat;
     }).toList();
 
@@ -811,20 +811,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 10),
 
+              // Modern Filter Chips Bar
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    'All',
-                    ..._categories.map((c) => '${c['icon']} ${c['name']}'),
+                    {'name': 'All', 'icon': '✨'},
+                    ..._categories,
                   ].map((cat) {
-                    final selected = _filterCategory == cat || (_filterCategory == 'Food' && cat.contains('Food'));
+                    final catName = cat['name'].toString();
+                    final catIcon = cat['icon'].toString();
+                    final isSelected = _filterCategory == catName;
                     return Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: ChoiceChip(
-                        label: Text(cat),
-                        selected: selected,
-                        onSelected: (_) => setState(() => _filterCategory = cat.replaceAll(RegExp(r'[^\w\s]'), '').trim()),
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        avatar: Text(catIcon, style: const TextStyle(fontSize: 14)),
+                        label: Text(catName, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 12)),
+                        selected: isSelected,
+                        selectedColor: _themeColor.withOpacity(0.2),
+                        onSelected: (_) => setState(() => _filterCategory = catName),
                       ),
                     );
                   }).toList(),
@@ -1535,7 +1540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (With Interactive PIN Setup & Dark Theme Switch)
+  // 5. SETTINGS TAB
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1549,7 +1554,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               ListTile(
                 leading: Text(_avatarEmoji, style: const TextStyle(fontSize: 22)),
-                title: const Text('Edit Profile Name & Avatar (20+ Icons)'),
+                title: const Text('Edit Profile Name & Avatar (24 Icons)'),
                 subtitle: Text(_profile['name'] ?? 'Alex'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showEditProfileDialog,
@@ -1839,7 +1844,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Edit Profile & Avatar (20+ Icons)'),
+              title: const Text('Edit Profile & Avatar (24 Icons)'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
