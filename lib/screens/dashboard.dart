@@ -24,6 +24,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _accounts = [];
   List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _recurringItems = [];
+  Map<String, double> _categoryBudgets = {};
   Map<String, dynamic> _profile = {};
   bool _isLoading = true;
   String _searchQuery = '';
@@ -45,6 +47,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _pinCode = '1234';
   bool _isDarkMode = false;
   Color _themeColor = const Color(0xFF2563EB);
+
+  // Daily Reminder States
+  bool _dailyReminderEnabled = true;
+  String _dailyReminderTime = '8:00 PM';
 
   // 24 Avatar Palette Choices
   final List<String> _avatars = [
@@ -78,11 +84,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final txs = await widget.storageService.getTransactions();
       final accs = await widget.storageService.getAccounts();
       final cats = await widget.storageService.getCategories();
+      final recs = await widget.storageService.getRecurringTransactions();
+      final budgets = await widget.storageService.getCategoryBudgets();
       final prof = (await widget.storageService.getProfile()) ?? {};
+
       setState(() {
         _transactions = txs;
         _accounts = accs;
         _categories = cats;
+        _recurringItems = recs;
+        _categoryBudgets = budgets;
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
         _targetMonthlyBudget = (double.tryParse(prof['monthly_budget'].toString()) ?? 100000.0);
@@ -93,6 +104,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _pinLockEnabled = prof['pin_lock'] == true;
         _pinCode = prof['pin_code'] ?? '1234';
         _isDarkMode = prof['dark_mode'] == true;
+        _dailyReminderEnabled = prof['daily_reminder_enabled'] ?? true;
+        _dailyReminderTime = prof['daily_reminder_time'] ?? '8:00 PM';
 
         if (prof['theme_color_val'] != null) {
           _themeColor = Color(prof['theme_color_val'] as int);
@@ -134,16 +147,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       .where((t) => t['type'] == 'expense')
       .fold(0.0, (sum, t) => sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
-  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId, DateTime selectedDate) async {
+  bool get _hasLoggedToday {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return _transactions.any((t) => t['date'] == today);
+  }
+
+  Future<void> _addTransaction(double amount, String category, String type, String notes, String location, String accountId, DateTime selectedDate, {String? fromAccountId, String? toAccountId, bool isRecurring = false, String frequency = 'Monthly'}) async {
     final newTx = {
       'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
       'amount': amount,
       'category': category,
       'type': type,
       'account_id': accountId,
+      'from_account_id': fromAccountId,
+      'to_account_id': toAccountId,
       'payment_method': 'Cash',
       'date': selectedDate.toIso8601String().substring(0, 10),
-      'notes': notes.isEmpty ? category : notes,
+      'notes': notes.isEmpty ? (type == 'transfer' ? 'Wallet Transfer' : category) : notes,
       'location': location.isEmpty ? 'Colombo' : location,
     };
 
@@ -156,6 +176,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     await widget.storageService.addTransaction(newTx);
+
+    if (isRecurring) {
+      await widget.storageService.addRecurringTransaction({
+        'id': 'rec-${DateTime.now().millisecondsSinceEpoch}',
+        'title': notes.isEmpty ? category : notes,
+        'amount': amount,
+        'category': category,
+        'type': type,
+        'account_id': accountId,
+        'frequency': frequency,
+      });
+    }
+
     _loadData();
   }
 
@@ -294,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (With Stealth Eye Icon on Net Worth Card)
+  // 1. HOME TAB (With Daily Reminder Banner & Subscriptions)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -325,7 +358,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Daily Expense Reminder Banner (If not logged today yet)
+          if (_dailyReminderEnabled && !_hasLoggedToday) ...[
+            Container(
+              padding: const EdgeInsets.all(14.0),
+              decoration: BoxDecoration(
+                color: Colors.amber[50],
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.amber[300]!),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active, color: Colors.amber),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text('🔔 Daily Expense Reminder', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+                        Text('You haven\'t logged any transactions today yet!', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                    onPressed: () => _showAddTransactionBottomSheet(),
+                    child: const Text('Log Now', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Total Net Worth Card (With Stealth Peek Eye Button 👁️)
           Container(
@@ -406,6 +472,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Recurring Subscriptions Section (Feature 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('🔁 Subscriptions & Recurring Bills', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              TextButton.icon(
+                onPressed: _showAddSubscriptionModal,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Sub'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (_recurringItems.isEmpty) ...[
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: const Padding(
+                padding: EdgeInsets.all(14.0),
+                child: Text('No recurring subscriptions added yet (e.g. Netflix, Wi-Fi, Rent). Tap "Add Sub" above.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+              ),
+            ),
+          ] else ...[
+            Column(
+              children: _recurringItems.map((rec) {
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    leading: const CircleAvatar(backgroundColor: Colors.purple, child: Icon(Icons.autorenew, color: Colors.white, size: 18)),
+                    title: Text(rec['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    subtitle: Text('${rec['frequency']} • ${rec['category']}', style: const TextStyle(fontSize: 11)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('$_preferredCurrency ${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+                        IconButton(
+                          icon: const Icon(Icons.play_arrow, color: Colors.green, size: 20),
+                          tooltip: 'Log due transaction now',
+                          onPressed: () async {
+                            await _addTransaction(
+                              (double.tryParse(rec['amount'].toString()) ?? 0.0),
+                              rec['category'],
+                              rec['type'] ?? 'expense',
+                              'Recurring: ${rec['title']}',
+                              'Subscription',
+                              rec['account_id'] ?? 'acc-1',
+                              DateTime.now(),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Logged ${rec['title']} transaction!')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 16),
+
           // Target Budget Card
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -452,61 +580,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Top Savings Goals Overview
-          if (_goals.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Top Savings Goals', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                TextButton(onPressed: () => setState(() => _currentTab = 3), child: const Text('View All')),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Column(
-              children: _goals.take(2).map((g) {
-                final pct = (g['current'] / g['target']).clamp(0.0, 1.0);
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  child: ListTile(
-                    leading: CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
-                    title: Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    subtitle: Text('Saved: $_preferredCurrency ${g['current']} / ${g['target']}', style: const TextStyle(fontSize: 11)),
-                    trailing: Text('${(pct * 100).toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.bold, color: g['color'])),
-                  ),
-                );
-              }).toList(),
-            ),
-          ] else ...[
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    CircleAvatar(backgroundColor: Colors.blue[50], child: const Icon(Icons.track_changes, color: Colors.blue)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Set a Savings Goal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          Text('Create target goals to track savings velocity.', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _currentTab = 3),
-                      child: const Text('Add Goal'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ],
       ),
+    );
+  }
+
+  void _showAddSubscriptionModal() {
+    final titleController = TextEditingController();
+    final amountController = TextEditingController();
+    String frequency = 'Monthly';
+    String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Add Recurring Subscription'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Subscription Title (e.g. Netflix)')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: frequency,
+                    items: const [
+                      DropdownMenuItem(value: 'Monthly', child: Text('Monthly')),
+                      DropdownMenuItem(value: 'Weekly', child: Text('Weekly')),
+                      DropdownMenuItem(value: 'Yearly', child: Text('Yearly')),
+                    ],
+                    onChanged: (val) => setModalState(() => frequency = val ?? 'Monthly'),
+                    decoration: const InputDecoration(labelText: 'Frequency'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final t = titleController.text.trim();
+                    final amt = double.tryParse(amountController.text) ?? 0.0;
+                    if (t.isNotEmpty && amt > 0) {
+                      Navigator.pop(context);
+                      await widget.storageService.addRecurringTransaction({
+                        'id': 'rec-${DateTime.now().millisecondsSinceEpoch}',
+                        'title': t,
+                        'amount': amt,
+                        'category': category,
+                        'type': 'expense',
+                        'frequency': frequency,
+                        'account_id': _accounts.isNotEmpty ? _accounts[0]['name'] : 'acc-1',
+                      });
+                      _loadData();
+                    }
+                  },
+                  child: const Text('Save Subscription'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -572,7 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showAccountDetailModal(String id, String name, double balance, Map<String, dynamic> rawAcc) {
-    final walletTxs = _transactions.where((t) => t['account_id'] == id || t['account_id'] == name).toList();
+    final walletTxs = _transactions.where((t) => t['account_id'] == id || t['account_id'] == name || t['from_account_id'] == name || t['to_account_id'] == name).toList();
 
     showModalBottomSheet(
       context: context,
@@ -841,68 +983,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB
+  // 3. ANALYTICS TAB (With Category Budgeting Limits - Feature 3)
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
-    if (_transactions.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.insights, size: 64, color: Colors.blue[300]),
-              const SizedBox(height: 16),
-              const Text('No Transactions Recorded Yet!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text(
-                'Log your first income or expense transaction to unlock live Financial Health Scores, Category Breakdown, and AI Advisor tips.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
-                onPressed: () => _showAddTransactionBottomSheet(),
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text('Add First Transaction', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     final monthTxs = _filteredByMonthTransactions;
     final monthIncome = monthTxs.where((t) => t['type'] == 'income').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
     final monthExpense = monthTxs.where((t) => t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
     final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
-
-    final selectedCatExpenses = monthTxs
-        .where((t) => t['category'] == _whatIfCategory && t['type'] == 'expense')
-        .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
-
-    final sixMonthSavings = (selectedCatExpenses * (_whatIfCutPct / 100.0)) * 6;
-
-    final totalCashflow = (monthIncome + monthExpense) > 0 ? (monthIncome + monthExpense) : 1.0;
-    final incomePct = (monthIncome / totalCashflow).clamp(0.0, 1.0);
-    final expensePct = (monthExpense / totalCashflow).clamp(0.0, 1.0);
-
-    double week1 = 0, week2 = 0, week3 = 0, week4 = 0;
-    for (var tx in monthTxs) {
-      if (tx['type'] == 'expense' && tx['date'] != null) {
-        final day = int.tryParse(tx['date'].toString().split('-').last) ?? 1;
-        final amt = double.tryParse(tx['amount'].toString()) ?? 0.0;
-        if (day <= 7) week1 += amt;
-        else if (day <= 14) week2 += amt;
-        else if (day <= 21) week3 += amt;
-        else week4 += amt;
-      }
-    }
-    final maxWeekSpend = [week1, week2, week3, week4].reduce((a, b) => a > b ? a : b);
-    final maxWeekBase = maxWeekSpend > 0 ? maxWeekSpend : 1.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -962,74 +1051,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // Week-by-Week Spending Breakdown Chart
-          const Text('📅 Week-by-Week Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          // PER-CATEGORY BUDGETING LIMITS & WARNING BARS (Feature 3)
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-                children: [
-                  _buildBarChartRow('Week 1 (Days 1 - 7)', (week1 / maxWeekBase).clamp(0.0, 1.0), Colors.blue, '$_preferredCurrency ${week1.toStringAsFixed(0)}'),
-                  const SizedBox(height: 10),
-                  _buildBarChartRow('Week 2 (Days 8 - 14)', (week2 / maxWeekBase).clamp(0.0, 1.0), Colors.indigo, '$_preferredCurrency ${week2.toStringAsFixed(0)}'),
-                  const SizedBox(height: 10),
-                  _buildBarChartRow('Week 3 (Days 15 - 21)', (week3 / maxWeekBase).clamp(0.0, 1.0), Colors.orange, '$_preferredCurrency ${week3.toStringAsFixed(0)}'),
-                  const SizedBox(height: 10),
-                  _buildBarChartRow('Week 4 (Days 22 - End)', (week4 / maxWeekBase).clamp(0.0, 1.0), Colors.teal, '$_preferredCurrency ${week4.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // AI What-If Simulator
-          Card(
-            color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.auto_awesome, color: Colors.blue),
-                      SizedBox(width: 8),
-                      Text('🔮 AI "What-If" Predictive Simulator', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Select Category: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: _whatIfCategory,
-                        items: ['Food', 'Transport', 'Bills', 'Shopping'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _whatIfCategory = val);
-                        },
+                      const Text('🎯 Per-Category Spending Limits', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      TextButton.icon(
+                        onPressed: _showSetCategoryBudgetModal,
+                        icon: const Icon(Icons.edit, size: 14),
+                        label: const Text('Set Limit', style: TextStyle(fontSize: 11)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text('What if I reduce $_whatIfCategory expenses by ${_whatIfCutPct.toStringAsFixed(0)}%?', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  Slider(
-                    value: _whatIfCutPct,
-                    min: 0,
-                    max: 50,
-                    divisions: 10,
-                    label: '${_whatIfCutPct.toStringAsFixed(0)}%',
-                    onChanged: (val) => setState(() => _whatIfCutPct = val),
-                  ),
-                  Text(
-                    '👉 Projected 6-Month Savings: +$_preferredCurrency ${sixMonthSavings.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 13),
-                  ),
+                  const SizedBox(height: 8),
+                  if (_categoryBudgets.isEmpty) ...[
+                    const Text('No category budget limits configured. Tap "Set Limit" to track spending caps.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  ] else ...[
+                    ..._categoryBudgets.entries.map((entry) {
+                      final catName = entry.key;
+                      final limit = entry.value;
+
+                      final spent = monthTxs
+                          .where((t) => t['category'].toString().toLowerCase().contains(catName.toLowerCase()) && t['type'] == 'expense')
+                          .fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
+                      final pct = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
+
+                      Color barColor = Colors.green;
+                      String statusBadge = '🟢 Normal';
+                      if (spent >= limit) {
+                        barColor = Colors.red;
+                        statusBadge = '🔴 OVERBUDGET!';
+                      } else if (pct >= 0.8) {
+                        barColor = Colors.orange;
+                        statusBadge = '🟡 Warning (Near Limit)';
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(catName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                Text('Spent: $_preferredCurrency ${spent.toStringAsFixed(0)} / ${limit.toStringAsFixed(0)} ($statusBadge)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: barColor)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: pct,
+                                minHeight: 8,
+                                backgroundColor: Colors.grey[200],
+                                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
@@ -1045,48 +1138,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildBarChartRow('🟢 Income Cashflow', incomePct, Colors.green, '$_preferredCurrency ${monthIncome.toStringAsFixed(0)}'),
+                  _buildBarChartRow('🟢 Income Cashflow', monthIncome > 0 ? 1.0 : 0.0, Colors.green, '$_preferredCurrency ${monthIncome.toStringAsFixed(0)}'),
                   const SizedBox(height: 12),
-                  _buildBarChartRow('🔴 Expense Outflow', expensePct, Colors.red, '$_preferredCurrency ${monthExpense.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Category Spending Donut Chart
-          const Text('Category Spending Distribution', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Container(
-                    width: 140,
-                    height: 140,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _themeColor, width: 14),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Total Spend', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                        Text('$_preferredCurrency ${monthExpense.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ..._categories.map((cat) {
-                    final catName = cat['name'].toString().split(' ').first;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: _buildCategoryProgressRow('${cat['icon']} ${cat['name']}', _getCategoryPct(catName, monthExpense), Colors.orange),
-                    );
-                  }),
+                  _buildBarChartRow('🔴 Expense Outflow', monthExpense > 0 ? 1.0 : 0.0, Colors.red, '$_preferredCurrency ${monthExpense.toStringAsFixed(0)}'),
                 ],
               ),
             ),
@@ -1096,10 +1150,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  double _getCategoryPct(String cat, double totalExp) {
-    if (totalExp == 0) return 0.0;
-    final catExp = _filteredByMonthTransactions.where((t) => t['category'].toString().toLowerCase().contains(cat.toLowerCase()) && t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
-    return (catExp / totalExp).clamp(0.0, 1.0);
+  void _showSetCategoryBudgetModal() {
+    String selectedCat = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Set Category Budget Limit'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedCat,
+                    items: _categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))).toList(),
+                    onChanged: (val) => setModalState(() => selectedCat = val ?? selectedCat),
+                    decoration: const InputDecoration(labelText: 'Select Category'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Monthly Limit (e.g. 30000)'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final amt = double.tryParse(controller.text) ?? 0.0;
+                    if (amt > 0) {
+                      Navigator.pop(context);
+                      await widget.storageService.saveCategoryBudget(selectedCat, amt);
+                      _loadData();
+                    }
+                  },
+                  child: const Text('Save Limit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildBarChartRow(String label, double pct, Color color, String amountStr) {
@@ -1124,76 +1222,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCategoryProgressRow(String label, double pct, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            Text('${(pct * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        LinearProgressIndicator(value: pct, backgroundColor: Colors.grey[200], valueColor: AlwaysStoppedAnimation<Color>(color)),
-      ],
-    );
-  }
-
-  Future<String?> _showAddCategoryModal() async {
-    final nameController = TextEditingController();
-    String selectedIcon = '🍔';
-
-    return showDialog<String>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return AlertDialog(
-              title: const Text('Add Custom Category'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Category Name (e.g. Gym)')),
-                  const SizedBox(height: 12),
-                  const Text('Select Category Icon:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _categoryIcons.map((ic) {
-                      return ChoiceChip(
-                        label: Text(ic, style: const TextStyle(fontSize: 18)),
-                        selected: selectedIcon == ic,
-                        onSelected: (_) => setModalState(() => selectedIcon = ic),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
-                ElevatedButton(
-                  onPressed: () async {
-                    final n = nameController.text.trim();
-                    if (n.isNotEmpty) {
-                      final newCat = {'name': n, 'icon': selectedIcon};
-                      await widget.storageService.addCategory(newCat);
-                      await _loadData();
-                      Navigator.pop(context, n);
-                    }
-                  },
-                  child: const Text('Create Category'),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 
@@ -1233,13 +1261,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: Colors.grey),
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
-                      onPressed: _showAddGoalModal,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text('Create First Goal', style: TextStyle(color: Colors.white)),
-                    ),
                   ],
                 ),
               ),
@@ -1249,74 +1270,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final target = (g['target'] as double);
               final current = (g['current'] as double);
               final pct = (current / target).clamp(0.0, 1.0);
-              final remaining = (target - current).clamp(0.0, double.infinity);
 
-              final depositsCount = (g['deposits_count'] as int? ?? 1);
-              final lastAmount = (g['last_deposit_amount'] as double? ?? 15000.0);
-
-              String velocityStr;
-              if (depositsCount >= 5) {
-                final estDays = (remaining / (lastAmount / 5.0)).ceil().clamp(1, 999);
-                velocityStr = '🚀 High Regularity: Completed in ~$estDays days!';
-              } else {
-                final months = (remaining / lastAmount).ceil().clamp(1, 48);
-                velocityStr = '⏱️ Regularity: Est. completion in ~$months months';
-              }
-
-              return GestureDetector(
-                onTap: () => _showGoalDetailModal(g),
-                child: Card(
-                  margin: const EdgeInsets.only(bottom: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                  Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                ],
-                              ),
+              return Card(
+                margin: const EdgeInsets.only(bottom: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(backgroundColor: (g['color'] as Color).withOpacity(0.1), child: Icon(g['icon'], color: g['color'])),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(g['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text('Saved: $_preferredCurrency ${current.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                              onPressed: () => _showEditGoalModal(g),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: pct,
-                            minHeight: 8,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: AlwaysStoppedAnimation<Color>(g['color']),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          minHeight: 8,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(g['color']),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text(velocityStr, style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                              onPressed: () => _showDepositToGoalModal(g),
-                              icon: const Icon(Icons.add, size: 14),
-                              label: const Text('Deposit', style: TextStyle(fontSize: 11)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -1324,155 +1312,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ],
       ),
-    );
-  }
-
-  void _showGoalDetailModal(Map<String, dynamic> goal) {
-    final historyList = (goal['history'] as List? ?? []);
-    final target = (goal['target'] as double);
-    final current = (goal['current'] as double);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${goal['title']} - Activity History', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text('Target: $_preferredCurrency ${target.toStringAsFixed(0)} • Saved: $_preferredCurrency ${current.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const Divider(height: 24),
-              const Text('Goal History Log:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 10),
-              historyList.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No deposit or target history logged yet.', style: TextStyle(color: Colors.grey)),
-                    )
-                  : Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: historyList.length,
-                        itemBuilder: (context, index) {
-                          final h = historyList[index];
-                          final isDeposit = h['type'] == 'deposit';
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Icon(isDeposit ? Icons.arrow_upward : Icons.edit, color: isDeposit ? Colors.green : Colors.blue),
-                            title: Text(isDeposit ? 'Deposit: +$_preferredCurrency ${h['amount']}' : 'Target Updated: $_preferredCurrency ${h['amount']}'),
-                            subtitle: Text('${h['date']} • ${h['notes']}'),
-                          );
-                        },
-                      ),
-                    ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDepositToGoalModal(Map<String, dynamic> goal) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Deposit to "${goal['title']}"'),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-            decoration: const InputDecoration(labelText: 'Deposit Amount (e.g. 5000)'),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final amt = double.tryParse(controller.text) ?? 0.0;
-                if (amt > 0) {
-                  Navigator.pop(context);
-                  setState(() {
-                    goal['current'] = (goal['current'] as double) + amt;
-                    goal['deposits_count'] = (goal['deposits_count'] as int? ?? 1) + 1;
-                    goal['last_deposit_amount'] = amt;
-
-                    final history = (goal['history'] as List? ?? []);
-                    history.insert(0, {
-                      'type': 'deposit',
-                      'amount': amt,
-                      'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
-                      'notes': 'Manual goal deposit'
-                    });
-                    goal['history'] = history;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('🎉 Deposited $_preferredCurrency $amt into ${goal['title']}!')),
-                  );
-                }
-              },
-              child: const Text('Save Deposit'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showEditGoalModal(Map<String, dynamic> goal) {
-    final titleController = TextEditingController(text: goal['title']);
-    final targetController = TextEditingController(text: (goal['target'] as double).toStringAsFixed(0));
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Goal Details'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: targetController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                decoration: const InputDecoration(labelText: 'Target Amount'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final t = titleController.text.trim();
-                final target = double.tryParse(targetController.text) ?? 50000.0;
-                if (t.isNotEmpty) {
-                  Navigator.pop(context);
-                  setState(() {
-                    goal['title'] = t;
-                    goal['target'] = target;
-
-                    final history = (goal['history'] as List? ?? []);
-                    history.insert(0, {
-                      'type': 'target_change',
-                      'amount': target,
-                      'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
-                      'notes': 'Target amount updated to $target'
-                    });
-                    goal['history'] = history;
-                  });
-                }
-              },
-              child: const Text('Update Goal'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -1512,18 +1351,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'title': t,
                       'target': target,
                       'current': 0.0,
-                      'deposits_count': 1,
-                      'last_deposit_amount': 10000.0,
                       'icon': Icons.stars,
                       'color': Colors.purple,
-                      'history': [
-                        {
-                          'type': 'target_change',
-                          'amount': target,
-                          'date': DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' '),
-                          'notes': 'Goal created with target $target'
-                        }
-                      ],
                     });
                   });
                 }
@@ -1537,7 +1366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB
+  // 5. SETTINGS TAB (With PDF Report Exporter & Reminders)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1555,22 +1384,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 subtitle: Text(_profile['name'] ?? 'Alex'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showEditProfileDialog,
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.calendar_today, color: Colors.blue),
-                title: const Text('Monthly Payday / Budget Reset Date'),
-                subtitle: Text('Resets on Day $_paydayResetDate of every month'),
-                trailing: DropdownButton<int>(
-                  value: _paydayResetDate,
-                  items: [1, 5, 10, 15, 20, 25].map((d) => DropdownMenuItem(value: d, child: Text('Day $d'))).toList(),
-                  onChanged: (val) async {
-                    if (val != null) {
-                      setState(() => _paydayResetDate = val);
-                      await widget.storageService.updateProfileField('payday_reset_date', val);
-                    }
-                  },
-                ),
               ),
               const Divider(height: 1),
               ListTile(
@@ -1593,12 +1406,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls
+        // SECTION 2: Privacy & Security Controls (Daily Reminder Feature 5)
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls (100% Offline)'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.notifications_active, color: Colors.amber),
+                title: const Text('🔔 Daily Expense Reminder'),
+                subtitle: Text(_dailyReminderEnabled ? 'Active at $_dailyReminderTime' : 'Disabled'),
+                value: _dailyReminderEnabled,
+                onChanged: (val) async {
+                  setState(() => _dailyReminderEnabled = val);
+                  await widget.storageService.updateProfileField('daily_reminder_enabled', val);
+                },
+              ),
+              const Divider(height: 1),
               SwitchListTile(
                 secondary: const Icon(Icons.visibility_off, color: Colors.purple),
                 title: const Text('Stealth Mode (Mask Balances ••••••)'),
@@ -1607,17 +1431,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onChanged: (val) async {
                   setState(() => _stealthMode = val);
                   await widget.storageService.updateProfileField('stealth_mode', val);
-                },
-              ),
-              const Divider(height: 1),
-              SwitchListTile(
-                secondary: const Icon(Icons.blur_on, color: Colors.teal),
-                title: const Text('Focus Blur Privacy Shield'),
-                subtitle: const Text('Blurs screen when switching apps'),
-                value: _privacyBlurEnabled,
-                onChanged: (val) async {
-                  setState(() => _privacyBlurEnabled = val);
-                  await widget.storageService.updateProfileField('privacy_blur', val);
                 },
               ),
               const Divider(height: 1),
@@ -1632,9 +1445,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   } else {
                     setState(() => _pinLockEnabled = false);
                     await widget.storageService.updateProfileField('pin_lock', false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('PIN Lock deactivated.')),
-                    );
                   }
                 },
               ),
@@ -1643,12 +1453,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 3: Data Backup & Restore
-        _buildSettingsHeader('3. 💾 Data Backup & Restore (Offline & Private)'),
+        // SECTION 3: Data Backup & PDF Report Exporter (Feature 4)
+        _buildSettingsHeader('3. 💾 Data Backup & PDF Report Exporter'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             children: [
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                title: const Text('📄 Export Executive PDF Statement'),
+                subtitle: const Text('Generate printable financial statement report'),
+                trailing: const Icon(Icons.download),
+                onTap: () async {
+                  final reportStr = await widget.storageService.generatePdfStatementReport();
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Executive Financial Statement Report'),
+                      content: SingleChildScrollView(child: SelectableText(reportStr, style: const TextStyle(fontFamily: 'monospace', fontSize: 11))),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.table_chart, color: Colors.green),
                 title: const Text('Export Data to CSV / Excel'),
@@ -1661,26 +1491,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     builder: (context) => AlertDialog(
                       title: const Text('Exported CSV Spreadsheet'),
                       content: SingleChildScrollView(child: Text(csvStr)),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.backup, color: Colors.blue),
-                title: const Text('Backup & Restore (JSON)'),
-                subtitle: const Text('Export 1-tap JSON file backup'),
-                trailing: const Icon(Icons.download),
-                onTap: () async {
-                  final jsonStr = await widget.storageService.exportAllDataJson();
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Full App JSON Backup'),
-                      content: SingleChildScrollView(child: Text(jsonStr)),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
                       ],
@@ -1786,13 +1596,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   });
                   await widget.storageService.updateProfileField('pin_lock', true);
                   await widget.storageService.updateProfileField('pin_code', p);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('🔒 PIN Lock activated with code $p.')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('PIN must be exactly 4 digits!')),
-                  );
                 }
               },
               child: const Text('Save PIN'),
@@ -1903,8 +1706,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       itemCount: txList.length,
       itemBuilder: (context, index) {
         final tx = txList[index];
-        final isExpense = tx['type'] == 'expense';
+        final type = tx['type'];
+        final isExpense = type == 'expense';
+        final isTransfer = type == 'transfer';
         final amtStr = _stealthMode ? '••••' : tx['amount'].toString();
+
+        IconData leadingIcon = isExpense ? Icons.arrow_downward : Icons.arrow_upward;
+        Color leadingColor = isExpense ? Colors.red : Colors.green;
+        if (isTransfer) {
+          leadingIcon = Icons.swap_horiz;
+          leadingColor = Colors.blue;
+        }
+
+        String subtitleText = '${tx['date']} • ${tx['category']}';
+        if (isTransfer) {
+          subtitleText = '${tx['date']} • ${tx['from_account_id']} ➡️ ${tx['to_account_id']}';
+        }
+
         return Dismissible(
           key: Key(tx['id'] ?? index.toString()),
           background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 16), child: const Icon(Icons.delete, color: Colors.white)),
@@ -1917,14 +1735,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
-                child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
+                backgroundColor: leadingColor.withOpacity(0.1),
+                child: Icon(leadingIcon, color: leadingColor),
               ),
               title: Text(tx['notes'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
-              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location'] ?? ''}', style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
+              subtitle: Text(subtitleText, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
               trailing: Text(
-                '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isExpense ? Colors.red : Colors.green),
+                isTransfer ? '🔄 $_preferredCurrency $amtStr' : '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isTransfer ? Colors.blue : (isExpense ? Colors.red : Colors.green)),
               ),
             ),
           ),
@@ -1941,7 +1759,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
     String type = 'expense';
-    String selectedAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
+    String fromAccount = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
+    String toAccount = _accounts.length > 1 ? _accounts[1]['name'] : (_accounts.isNotEmpty ? _accounts[0]['name'] : '🏦 Bank Account');
 
     showModalBottomSheet(
       context: context,
@@ -1950,6 +1769,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final isExpense = type == 'expense';
+            final isTransfer = type == 'transfer';
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -1957,100 +1777,118 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 left: 24,
                 right: 24,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(isExpense ? 'Add Expense' : 'Add Income', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('📅 Date: ${selectedTxDate.toIso8601String().substring(0, 10)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      TextButton.icon(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedTxDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                          );
-                          if (picked != null) {
-                            setModalState(() => selectedTxDate = picked);
-                          }
-                        },
-                        icon: const Icon(Icons.edit_calendar, size: 16),
-                        label: const Text('Change Date'),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(isTransfer ? 'Transfer Money (Wallet ➡️ Wallet)' : (isExpense ? 'Add Expense' : 'Add Income'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('📅 Date: ${selectedTxDate.toIso8601String().substring(0, 10)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedTxDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                            );
+                            if (picked != null) {
+                              setModalState(() => selectedTxDate = picked);
+                            }
+                          },
+                          icon: const Icon(Icons.edit_calendar, size: 16),
+                          label: const Text('Change Date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    TextField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                      decoration: const InputDecoration(labelText: 'Amount'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: type,
+                      items: const [
+                        DropdownMenuItem(value: 'expense', child: Text('Expense 🔴')),
+                        DropdownMenuItem(value: 'income', child: Text('Income 🟢')),
+                        DropdownMenuItem(value: 'transfer', child: Text('Inter-Wallet Transfer 🔄')),
+                      ],
+                      onChanged: (val) => setModalState(() => type = val ?? 'expense'),
+                      decoration: const InputDecoration(labelText: 'Transaction Type'),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (isTransfer) ...[
+                      DropdownButtonFormField<String>(
+                        value: fromAccount,
+                        items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                        onChanged: (val) => setModalState(() => fromAccount = val ?? fromAccount),
+                        decoration: const InputDecoration(labelText: 'From Source Wallet'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: toAccount,
+                        items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                        onChanged: (val) => setModalState(() => toAccount = val ?? toAccount),
+                        decoration: const InputDecoration(labelText: 'To Destination Wallet'),
+                      ),
+                    ] else ...[
+                      DropdownButtonFormField<String>(
+                        value: fromAccount,
+                        items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                        onChanged: (val) => setModalState(() => fromAccount = val ?? fromAccount),
+                        decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: category,
+                        items: [
+                          ..._categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))),
+                        ],
+                        onChanged: (val) => setModalState(() => category = val ?? category),
+                        decoration: const InputDecoration(labelText: 'Category'),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
 
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                    decoration: const InputDecoration(labelText: 'Amount'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: type,
-                    items: const [
-                      DropdownMenuItem(value: 'expense', child: Text('Expense')),
-                      DropdownMenuItem(value: 'income', child: Text('Income')),
-                    ],
-                    onChanged: (val) => setModalState(() => type = val ?? 'expense'),
-                    decoration: const InputDecoration(labelText: 'Transaction Type'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: selectedAccount,
-                    items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
-                    onChanged: (val) => setModalState(() => selectedAccount = val ?? selectedAccount),
-                    decoration: InputDecoration(labelText: isExpense ? 'Pay From Wallet / Account' : 'Deposit To Wallet / Account'),
-                  ),
-                  const SizedBox(height: 12),
-
-                  DropdownButtonFormField<String>(
-                    value: category,
-                    items: [
-                      ..._categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))),
-                      const DropdownMenuItem(value: '__ADD_NEW__', child: Text('➕ + Add New Category', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
-                    ],
-                    onChanged: (val) async {
-                      if (val == '__ADD_NEW__') {
-                        final createdName = await _showAddCategoryModal();
-                        if (createdName != null && createdName.isNotEmpty) {
-                          setModalState(() {
-                            category = createdName;
-                          });
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: noteController,
+                      decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut, Rent, ATM Cash Withdrawal)'),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                      onPressed: () {
+                        final amt = double.tryParse(amountController.text) ?? 0.0;
+                        if (amt > 0) {
+                          Navigator.pop(context);
+                          _addTransaction(
+                            amt,
+                            isTransfer ? 'Transfer' : category,
+                            type,
+                            noteController.text,
+                            locationController.text,
+                            fromAccount,
+                            selectedTxDate,
+                            fromAccountId: fromAccount,
+                            toAccountId: isTransfer ? toAccount : null,
+                          );
                         }
-                      } else if (val != null) {
-                        setModalState(() => category = val);
-                      }
-                    },
-                    decoration: const InputDecoration(labelText: 'Category'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: noteController,
-                    decoration: const InputDecoration(labelText: 'Notes (e.g. Pizza Hut or Uber)'),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
-                    onPressed: () {
-                      final amt = double.tryParse(amountController.text) ?? 0.0;
-                      if (amt > 0) {
-                        Navigator.pop(context);
-                        _addTransaction(amt, category, type, noteController.text, locationController.text, selectedAccount, selectedTxDate);
-                      }
-                    },
-                    child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                      },
+                      child: const Text('Save Transaction', style: TextStyle(color: Colors.white)),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             );
           },
