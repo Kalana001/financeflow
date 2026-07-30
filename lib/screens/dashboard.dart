@@ -293,6 +293,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // CREATE NEW CATEGORY DIALOG (Called from Category Dropdown Choice)
+  Future<String?> _showAddNewCategoryModal() async {
+    final nameController = TextEditingController();
+    String selectedIcon = '🍔';
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('➕ Create New Category'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Category Name (e.g. Gaming)'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Select Icon/Emoji:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categoryIcons.map((ic) {
+                      return ChoiceChip(
+                        label: Text(ic, style: const TextStyle(fontSize: 18)),
+                        selected: selectedIcon == ic,
+                        onSelected: (_) => setModalState(() => selectedIcon = ic),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameController.text.trim();
+                    if (name.isNotEmpty) {
+                      final newCat = {'name': name, 'icon': selectedIcon};
+                      await widget.storageService.addCategory(newCat);
+                      await _loadData();
+                      Navigator.pop(context, name);
+                    }
+                  },
+                  child: const Text('Save Category'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -372,7 +429,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB (Responsive Phone Frame Safe)
+  // 1. HOME TAB
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -520,7 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Upgraded Recurring Subscriptions Section
+          // Upgraded Recurring Subscriptions Section (With Checkmark Icon & Early Payment Dialog)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -563,22 +620,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text('$_preferredCurrency ${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
                         IconButton(
-                          icon: const Icon(Icons.play_arrow, color: Colors.green, size: 20),
+                          icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 22),
                           tooltip: 'Confirm & Log transaction now',
-                          onPressed: () async {
-                            await _addTransaction(
-                              (double.tryParse(rec['amount'].toString()) ?? 0.0),
-                              rec['category'],
-                              rec['type'] ?? 'expense',
-                              'Recurring: ${rec['title']}',
-                              'Subscription',
-                              rec['account_id'] ?? 'acc-1',
-                              DateTime.now(),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Logged ${rec['title']} transaction!')),
-                            );
-                          },
+                          onPressed: () => _showConfirmRecurringDialog(rec),
                         ),
                       ],
                     ),
@@ -640,6 +684,115 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // CONFIRM RECURRING DIALOG WITH EDITABLE DATE & WALLET
+  void _showConfirmRecurringDialog(Map<String, dynamic> rec) {
+    DateTime txDate = DateTime.now();
+    String selectedWallet = rec['account_id'] ?? (_accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: Text('Confirm Subscription Payment: ${rec['title']}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Amount: $_preferredCurrency ${rec['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text('Category: ${rec['category']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('📅 Payment Date: ${txDate.toIso8601String().substring(0, 10)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: txDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                            );
+                            if (picked != null) setModalState(() => txDate = picked);
+                          },
+                          child: const Text('Change Date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedWallet,
+                      items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                      onChanged: (val) => setModalState(() => selectedWallet = val ?? selectedWallet),
+                      decoration: const InputDecoration(labelText: 'Deduct From Wallet'),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    final amt = (double.tryParse(rec['amount'].toString()) ?? 0.0);
+                    
+                    // 1. Log transaction with selected date and wallet
+                    await _addTransaction(
+                      amt,
+                      rec['category'],
+                      rec['type'] ?? 'expense',
+                      'Recurring: ${rec['title']}',
+                      'Subscription',
+                      selectedWallet,
+                      txDate,
+                    );
+
+                    // 2. Automatically advance next due date cycle
+                    final frequency = rec['frequency'] ?? 'Monthly';
+                    DateTime nextCycleDate = txDate;
+                    if (frequency == 'Weekly') {
+                      nextCycleDate = txDate.add(const Duration(days: 7));
+                    } else if (frequency == 'Yearly') {
+                      nextCycleDate = DateTime(txDate.year + 1, txDate.month, txDate.day);
+                    } else {
+                      int nextMonth = txDate.month + 1;
+                      int nextYear = txDate.year;
+                      if (nextMonth > 12) {
+                        nextMonth = 1;
+                        nextYear += 1;
+                      }
+                      nextCycleDate = DateTime(nextYear, nextMonth, txDate.day);
+                    }
+
+                    rec['start_date'] = nextCycleDate.toIso8601String().substring(0, 10);
+                    final recs = await widget.storageService.getRecurringTransactions();
+                    final idx = recs.indexWhere((r) => r['id'] == rec['id']);
+                    if (idx != -1) {
+                      recs[idx]['start_date'] = rec['start_date'];
+                      await widget.storageService.saveRecurringTransactions(recs);
+                    }
+
+                    _loadData();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Logged ${rec['title']} payment! Next due date updated to ${rec['start_date']}.')),
+                    );
+                  },
+                  child: const Text('Confirm Payment'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ADD SUBSCRIPTION MODAL (With Wallet & Category Dropdowns)
   void _showAddSubscriptionModal() {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
@@ -647,6 +800,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String frequency = 'Monthly';
     bool autoLog = false;
     String category = _categories.isNotEmpty ? _categories[0]['name'] : 'Food & Dining';
+    String selectedWallet = _accounts.isNotEmpty ? _accounts[0]['name'] : '💵 Cash Wallet';
 
     showDialog(
       context: context,
@@ -666,6 +820,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                       decoration: const InputDecoration(labelText: 'Amount'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedWallet,
+                      items: _accounts.map((a) => DropdownMenuItem(value: a['name'].toString(), child: Text(a['name'].toString()))).toList(),
+                      onChanged: (val) => setModalState(() => selectedWallet = val ?? selectedWallet),
+                      decoration: const InputDecoration(labelText: 'Pay From Wallet'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      items: [
+                        ..._categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))),
+                        const DropdownMenuItem(value: '__ADD_NEW_CATEGORY__', child: Text('➕ Create New Category', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                      ],
+                      onChanged: (val) async {
+                        if (val == '__ADD_NEW_CATEGORY__') {
+                          final newCat = await _showAddNewCategoryModal();
+                          if (newCat != null) {
+                            setModalState(() => category = newCat);
+                          }
+                        } else if (val != null) {
+                          setModalState(() => category = val);
+                        }
+                      },
+                      decoration: const InputDecoration(labelText: 'Category'),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -725,7 +905,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         'frequency': frequency,
                         'start_date': startDate.toIso8601String().substring(0, 10),
                         'auto_log': autoLog,
-                        'account_id': _accounts.isNotEmpty ? _accounts[0]['name'] : 'acc-1',
+                        'account_id': selectedWallet,
                       });
                       _loadData();
                     }
@@ -966,7 +1146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (Responsive Frame Safe)
+  // 2. TRANSACTIONS TAB
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -987,7 +1167,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Column(
       children: [
-        // Top Search & Month Filter Header (Responsive Frame Safe)
+        // Top Search & Month Filter Header
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1070,7 +1250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (Responsive Frame Safe)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1162,7 +1342,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD (Responsive Phone Frame Safe)
+          // DYNAMIC AI WHAT-IF PREDICTIVE SIMULATOR CARD
           Card(
             color: _isDarkMode ? Colors.blue[900]!.withOpacity(0.3) : Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -1490,7 +1670,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 4. GOALS TAB (Simplified Amount-Only Deposit Fix)
+  // 4. GOALS TAB
   // ----------------------------------------------------
   Widget _buildGoalsTab() {
     return SingleChildScrollView(
@@ -1605,7 +1785,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // SIMPLIFIED AMOUNT-ONLY DEPOSIT MODAL (NO WALLET SELECTOR / NO DEDUCTION)
   void _showDepositToGoalModal(Map<String, dynamic> goal) {
     final depositController = TextEditingController();
 
@@ -1704,7 +1883,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (Responsive Phone Frame Safe)
+  // 5. SETTINGS TAB
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1744,7 +1923,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls (Responsive Frame Safe Reminder Tile)
+        // SECTION 2: Privacy & Security Controls
         _buildSettingsHeader('2. 🔐 Privacy & Security Controls'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2231,8 +2410,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         value: category,
                         items: [
                           ..._categories.map((c) => DropdownMenuItem(value: c['name'].toString(), child: Text('${c['icon']} ${c['name']}'))),
+                          const DropdownMenuItem(value: '__ADD_NEW_CATEGORY__', child: Text('➕ Create New Category', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
                         ],
-                        onChanged: (val) => setModalState(() => category = val ?? category),
+                        onChanged: (val) async {
+                          if (val == '__ADD_NEW_CATEGORY__') {
+                            final newCat = await _showAddNewCategoryModal();
+                            if (newCat != null) {
+                              setModalState(() => category = newCat);
+                            }
+                          } else if (val != null) {
+                            setModalState(() => category = val);
+                          }
+                        },
                         decoration: const InputDecoration(labelText: 'Category'),
                       ),
                     ],
