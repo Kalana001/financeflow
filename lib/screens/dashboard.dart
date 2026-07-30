@@ -30,13 +30,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _filterCategory = 'All';
   String _selectedMonthFilter = 'All';
 
-  // Preferences
-  bool _simpleMode = false;
+  // Settings & Preferences
   String _preferredCurrency = 'LKR';
   double _targetMonthlyBudget = 100000.0;
   double _whatIfCutPct = 20.0;
   String _whatIfCategory = 'Food';
+  
+  // New Preferences
+  String _avatarEmoji = '👨‍💼';
+  int _paydayResetDate = 1;
+  bool _stealthMode = false;
+  bool _privacyBlurEnabled = true;
+  bool _pinLockEnabled = false;
   Color _themeColor = const Color(0xFF2563EB);
+
+  // Avatar Choices
+  final List<String> _avatars = ['👨‍💼', '👩‍💼', '🚀', '💎', '🦁', '👑', '🦊', '🤖'];
 
   // High Value OTP Prompt State
   Map<String, dynamic>? _pendingHighValueTx;
@@ -70,8 +79,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _categories = cats;
         _profile = prof;
         _preferredCurrency = prof['currency'] ?? 'LKR';
-        _simpleMode = prof['simple_mode'] == true;
         _targetMonthlyBudget = (double.tryParse(prof['monthly_budget'].toString()) ?? 100000.0);
+        _avatarEmoji = prof['avatar_emoji'] ?? '👨‍💼';
+        _paydayResetDate = prof['payday_reset_date'] ?? 1;
+        _stealthMode = prof['stealth_mode'] == true;
+        _privacyBlurEnabled = prof['privacy_blur'] ?? true;
+        _pinLockEnabled = prof['pin_lock'] == true;
+
+        if (prof['theme_color_val'] != null) {
+          _themeColor = Color(prof['theme_color_val'] as int);
+        }
       });
     } catch (e) {
       print('Error loading local data: $e');
@@ -80,13 +97,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // List of available months for filter dropdown
+  // Available months for filter dropdown
   List<String> get _availableMonths {
     final Set<String> months = {'All'};
     for (var tx in _transactions) {
       final d = tx['date'].toString();
       if (d.length >= 7) {
-        months.add(d.substring(0, 7)); // e.g. "2026-07"
+        months.add(d.substring(0, 7));
       }
     }
     return months.toList();
@@ -98,7 +115,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _transactions.where((t) => t['date'].toString().startsWith(_selectedMonthFilter)).toList();
   }
 
-  // Dynamic Net Worth calculation: Sum of all wallet balances
   double get _totalNetWorth => _accounts.fold(
       0.0, (sum, acc) => sum + (double.tryParse(acc['current_balance'].toString()) ?? 0.0));
 
@@ -223,6 +239,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: Icon(_stealthMode ? Icons.visibility_off : Icons.visibility),
+            onPressed: () async {
+              setState(() => _stealthMode = !_stealthMode);
+              await widget.storageService.updateProfileField('stealth_mode', _stealthMode);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
           )
@@ -258,6 +281,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
     final remainingBudget = (_targetMonthlyBudget - _totalExpense).clamp(0.0, double.infinity);
 
+    final netWorthStr = _stealthMode ? '••••••' : '${_totalNetWorth.toStringAsFixed(2)}';
+    final incomeStr = _stealthMode ? '••••' : _totalIncome.toStringAsFixed(0);
+    final expenseStr = _stealthMode ? '••••' : _totalExpense.toStringAsFixed(0);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -275,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               CircleAvatar(
                 backgroundColor: _themeColor.withOpacity(0.15),
-                child: Icon(Icons.person, color: _themeColor),
+                child: Text(_avatarEmoji, style: const TextStyle(fontSize: 20)),
               ),
             ],
           ),
@@ -299,7 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '$_preferredCurrency ${_totalNetWorth.toStringAsFixed(2)}',
+                    '$_preferredCurrency $netWorthStr',
                     style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
                   ),
                 ),
@@ -310,9 +337,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(child: Text('🟢 Income: $_preferredCurrency ${_totalIncome.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text('🟢 Income: $_preferredCurrency $incomeStr', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                       const SizedBox(width: 8),
-                      Expanded(child: Text('🔴 Expense: $_preferredCurrency ${_totalExpense.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text('🔴 Expense: $_preferredCurrency $expenseStr', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),
@@ -451,6 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAccountCard(String id, String name, String iconStr, double balance, Map<String, dynamic> rawAcc) {
+    final balStr = _stealthMode ? '••••••' : balance.toStringAsFixed(2);
     return GestureDetector(
       onTap: () => _showAccountDetailModal(id, name, balance, rawAcc),
       child: Container(
@@ -473,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Text('$_preferredCurrency ${balance.toStringAsFixed(2)}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : Colors.black87)),
+            Text('$_preferredCurrency $balStr', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : Colors.black87)),
           ],
         ),
       ),
@@ -675,7 +703,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB (With Monthly Filter)
+  // 2. TRANSACTIONS TAB
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -744,7 +772,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Monthly Filter & Weekly Breakdown Bar Chart)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     if (_transactions.isEmpty) {
@@ -793,7 +821,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final incomePct = (monthIncome / totalCashflow).clamp(0.0, 1.0);
     final expensePct = (monthExpense / totalCashflow).clamp(0.0, 1.0);
 
-    // Week-by-Week Spending Breakdown Calculation
     double week1 = 0, week2 = 0, week3 = 0, week4 = 0;
     for (var tx in monthTxs) {
       if (tx['type'] == 'expense' && tx['date'] != null) {
@@ -868,7 +895,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 📅 Week-by-Week Spending Breakdown Chart
+          // Week-by-Week Spending Breakdown Chart
           const Text('📅 Week-by-Week Spending Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
@@ -890,7 +917,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 🔮 AI What-If Simulator
+          // AI What-If Simulator
           Card(
             color: Colors.blue[50],
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.blue[200]!)),
@@ -1048,7 +1075,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Modal to Add Custom Expense Category
   Future<String?> _showAddCategoryModal() async {
     final nameController = TextEditingController();
     String selectedIcon = '🍔';
@@ -1442,98 +1468,289 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB
+  // 5. SETTINGS TAB (Categorized & Redesigned)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        const Text('Preferences & Customization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-
+        // SECTION 1: Profile & Financial Preferences
+        _buildSettingsHeader('1. 👤 Profile & Financial Preferences'),
         Card(
-          child: SwitchListTile(
-            title: const Text('Simple Beginner Mode'),
-            subtitle: const Text('Hides complex tools'),
-            value: _simpleMode,
-            onChanged: (val) {
-              setState(() => _simpleMode = val);
-              widget.storageService.updateProfileField('simple_mode', val);
-            },
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: [
+              ListTile(
+                leading: Text(_avatarEmoji, style: const TextStyle(fontSize: 22)),
+                title: const Text('Edit Profile Name & Avatar'),
+                subtitle: Text(_profile['name'] ?? 'Alex'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _showEditProfileDialog,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.calendar_today, color: Colors.blue),
+                title: const Text('Monthly Payday / Budget Reset Date'),
+                subtitle: Text('Resets on Day $_paydayResetDate of every month'),
+                trailing: DropdownButton<int>(
+                  value: _paydayResetDate,
+                  items: [1, 5, 10, 15, 20, 25].map((d) => DropdownMenuItem(value: d, child: Text('Day $d'))).toList(),
+                  onChanged: (val) async {
+                    if (val != null) {
+                      setState(() => _paydayResetDate = val);
+                      await widget.storageService.updateProfileField('payday_reset_date', val);
+                    }
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.monetization_on, color: Colors.green),
+                title: const Text('Default Currency Selector'),
+                subtitle: Text('Currently set to $_preferredCurrency'),
+                trailing: DropdownButton<String>(
+                  value: _preferredCurrency,
+                  items: ['LKR', 'USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                  onChanged: (val) async {
+                    if (val != null) {
+                      setState(() => _preferredCurrency = val);
+                      await widget.storageService.updateProfileField('currency', val);
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
         ),
+        const SizedBox(height: 20),
 
+        // SECTION 2: Privacy & Security Controls
+        _buildSettingsHeader('2. 🔐 Privacy & Security Controls (100% Offline)'),
         Card(
-          child: ListTile(
-            title: const Text('Preferred Currency'),
-            subtitle: Text('Currently set to $_preferredCurrency'),
-            trailing: DropdownButton<String>(
-              value: _preferredCurrency,
-              items: ['LKR', 'USD', 'EUR', 'GBP', 'INR'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _preferredCurrency = val);
-                  widget.storageService.updateProfileField('currency', val);
-                }
-              },
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.visibility_off, color: Colors.purple),
+                title: const Text('Stealth Mode (Mask Balances ••••••)'),
+                subtitle: const Text('Hides net worth & wallet balances in public'),
+                value: _stealthMode,
+                onChanged: (val) async {
+                  setState(() => _stealthMode = val);
+                  await widget.storageService.updateProfileField('stealth_mode', val);
+                },
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                secondary: const Icon(Icons.blur_on, color: Colors.teal),
+                title: const Text('Focus Blur Privacy Shield'),
+                subtitle: const Text('Blurs screen when switching apps'),
+                value: _privacyBlurEnabled,
+                onChanged: (val) async {
+                  setState(() => _privacyBlurEnabled = val);
+                  await widget.storageService.updateProfileField('privacy_blur', val);
+                },
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                secondary: const Icon(Icons.lock, color: Colors.orange),
+                title: const Text('Optional Screen PIN Lock'),
+                subtitle: const Text('Require 4-digit PIN when launching app'),
+                value: _pinLockEnabled,
+                onChanged: (val) async {
+                  setState(() => _pinLockEnabled = val);
+                  await widget.storageService.updateProfileField('pin_lock', val);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // SECTION 3: Data Backup & Restore
+        _buildSettingsHeader('3. 💾 Data Backup & Restore (Offline & Private)'),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.table_chart, color: Colors.green),
+                title: const Text('Export Data to CSV / Excel'),
+                subtitle: const Text('Download transactions spreadsheet'),
+                trailing: const Icon(Icons.download),
+                onTap: () async {
+                  final csvStr = await widget.storageService.exportCsvData();
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Exported CSV Spreadsheet'),
+                      content: SingleChildScrollView(child: Text(csvStr)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.backup, color: Colors.blue),
+                title: const Text('Backup & Restore (JSON)'),
+                subtitle: const Text('Export 1-tap JSON file backup'),
+                trailing: const Icon(Icons.download),
+                onTap: () async {
+                  final jsonStr = await widget.storageService.exportAllDataJson();
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Full App JSON Backup'),
+                      content: SingleChildScrollView(child: Text(jsonStr)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text('Reset & Wipe Data'),
+                subtitle: const Text('Factory reset all local records'),
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Reset Profile & Data?'),
+                      content: const Text('This will wipe all local wallets and transactions. Cannot be undone!'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Wipe All Data', style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    await widget.storageService.clearAllData();
+                    widget.onResetRequested();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // SECTION 4: Themes & Accent Color Palette
+        _buildSettingsHeader('4. 🎨 Themes & Accent Color Palette'),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Select App Accent Color Theme:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildThemeColorOption('Royal Blue 💙', const Color(0xFF2563EB)),
+                    _buildThemeColorOption('Emerald 💚', const Color(0xFF10B981)),
+                    _buildThemeColorOption('Purple 💜', const Color(0xFF8B5CF6)),
+                    _buildThemeColorOption('Midnight 🌙', const Color(0xFF1E293B)),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-
-        const SizedBox(height: 16),
-        const Text('Data Privacy & Reset', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-
-        Card(
-          child: ListTile(
-            title: const Text('Export Local Data (JSON)'),
-            subtitle: const Text('Export a copy of your records in JSON format'),
-            trailing: const Icon(Icons.download),
-            onTap: () async {
-              final jsonStr = await widget.storageService.exportAllDataJson();
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Data Exported'),
-                  content: SingleChildScrollView(child: Text(jsonStr)),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    )
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-
-        Card(
-          child: ListTile(
-            title: const Text('Reset Profile & Clear Data'),
-            subtitle: const Text('Wipes profile name and local transactions'),
-            trailing: const Icon(Icons.delete, color: Colors.red),
-            onTap: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Reset Profile & Data?'),
-                  content: const Text('This action cannot be undone.'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Reset', style: TextStyle(color: Colors.red))),
-                  ],
-                ),
-              );
-
-              if (confirm == true) {
-                await widget.storageService.clearAllData();
-                widget.onResetRequested();
-              }
-            },
-          ),
-        ),
+        const SizedBox(height: 30),
       ],
+    );
+  }
+
+  Widget _buildSettingsHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildThemeColorOption(String label, Color color) {
+    final isSelected = _themeColor.value == color.value;
+    return GestureDetector(
+      onTap: () async {
+        setState(() => _themeColor = color);
+        await widget.storageService.updateProfileField('theme_color_val', color.value);
+      },
+      child: Column(
+        children: [
+          CircleAvatar(
+            backgroundColor: color,
+            radius: 20,
+            child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileDialog() {
+    final nameController = TextEditingController(text: _profile['name'] ?? 'Alex');
+    String selectedAvatar = _avatarEmoji;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Edit Profile & Avatar'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Profile Display Name')),
+                  const SizedBox(height: 12),
+                  const Text('Select Avatar Emoji:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _avatars.map((av) {
+                      return ChoiceChip(
+                        label: Text(av, style: const TextStyle(fontSize: 20)),
+                        selected: selectedAvatar == av,
+                        onSelected: (_) => setModalState(() => selectedAvatar = av),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () async {
+                    final n = nameController.text.trim();
+                    if (n.isNotEmpty) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _profile['name'] = n;
+                        _avatarEmoji = selectedAvatar;
+                      });
+                      await widget.storageService.updateProfileField('name', n);
+                      await widget.storageService.updateProfileField('avatar_emoji', selectedAvatar);
+                    }
+                  },
+                  child: const Text('Save Profile'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1552,6 +1769,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       itemBuilder: (context, index) {
         final tx = txList[index];
         final isExpense = tx['type'] == 'expense';
+        final amtStr = _stealthMode ? '••••' : tx['amount'].toString();
         return Dismissible(
           key: Key(tx['id'] ?? index.toString()),
           background: Container(color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 16), child: const Icon(Icons.delete, color: Colors.white)),
@@ -1568,7 +1786,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               title: Text(tx['notes'] ?? tx['category'], overflow: TextOverflow.ellipsis),
               subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location'] ?? ''}', overflow: TextOverflow.ellipsis),
               trailing: Text(
-                '${isExpense ? '-' : '+'} $_preferredCurrency ${tx['amount']}',
+                '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
                 style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
               ),
             ),
@@ -1609,7 +1827,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(isExpense ? 'Add Expense' : 'Add Income', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   
-                  // Date Picker Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1658,7 +1875,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Category Selector with "+ Add New Category" Option
                   DropdownButtonFormField<String>(
                     value: category,
                     items: [

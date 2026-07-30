@@ -185,7 +185,7 @@ class LocalStorageService {
   }
 
   // ----------------------------------------------------
-  // EXPORT & RESET
+  // EXPORT & RESTORE
   // ----------------------------------------------------
   Future<String> exportAllDataJson() async {
     final prof = await getProfile();
@@ -200,6 +200,16 @@ class LocalStorageService {
       'transactions': txs,
     };
     return jsonEncode(dump);
+  }
+
+  Future<String> exportCsvData() async {
+    final txs = await getTransactions();
+    final buffer = StringBuffer();
+    buffer.writeln('ID,Date,Type,Category,Amount,Wallet,Notes,Location');
+    for (var tx in txs) {
+      buffer.writeln('"${tx['id']}","${tx['date']}","${tx['type']}","${tx['category']}",${tx['amount']},"${tx['account_id']}","${tx['notes']}","${tx['location']}"');
+    }
+    return buffer.toString();
   }
 
   Future<void> clearAllData() async {
