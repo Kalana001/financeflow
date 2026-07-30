@@ -46031,7 +46031,7 @@ break
 case 1:return A.K(q,r)}})
 return A.L($async$yH,r)},
 G(a){var s,r,q,p,o,n,m,l,k,j=this,i=null
-if(j.Q)return A.aul(i,A.eL(A.bk(A.b([new A.r4(i,i,j.go,i,i,i,i),B.bs,B.Ym],t.p),B.p,B.kY,B.o),i,i),i,i)
+if(j.Q)return A.aul(i,A.eL(A.bk(A.b([new A.r4(i,i,j.go,i,i,i,i),B.bs,B.Yl],t.p),B.p,B.kY,B.o),i,i),i,i)
 s=j.fy
 r=s?B.aE:B.ad
 q=j.go
@@ -46239,15 +46239,15 @@ e=A.b_(18)
 a0=A.z(B.c.aK(25.5),33,150,243)
 a=A.b_(8)
 p=a6.ax
-p=A.bK(A.b([B.YT,A.bW(a7,A.ap(p==="All"?"\ud83d\uddd3\ufe0f All Time":"\ud83d\udcc5 "+p,a7,a7,a7,B.B0,a7,a7),B.i,a7,a7,new A.c0(a0,a7,a7,a,a7,a7,B.a5),a7,a7,a7,B.oq,a7,a7,a7)],c),B.p,B.aF,B.o)
+p=A.bK(A.b([B.YU,A.bW(a7,A.ap(p==="All"?"\ud83d\uddd3\ufe0f All Time":"\ud83d\udcc5 "+p,a7,a7,a7,B.B0,a7,a7),B.i,a7,a7,new A.c0(a0,a7,a7,a,a7,a7,B.a5),a7,a7,a7,B.oq,a7,a7,a7)],c),B.p,B.aF,B.o)
 d=A.ap(a6.ay+" "+B.c.X(b0,0),a7,a7,a7,B.Va,a7,a7)
 a=B.c.e3(120*(b0/g),10,120)
 a0=B.c.aK(76.5)
 a1=t.V
-a=A.bk(A.b([d,B.cU,A.bW(a7,a7,B.i,a7,a7,new A.c0(a7,a7,a7,B.jj,A.b([new A.bb(0,B.L,A.z(a0,76,175,80),B.dd,6)],a1),B.Ki,B.a5),a7,a,a7,a7,a7,a7,44),B.bn,B.Yj],c),B.p,B.dc,B.o)
+a=A.bk(A.b([d,B.cU,A.bW(a7,a7,B.i,a7,a7,new A.c0(a7,a7,a7,B.jj,A.b([new A.bb(0,B.L,A.z(a0,76,175,80),B.dd,6)],a1),B.Ki,B.a5),a7,a,a7,a7,a7,a7,44),B.bn,B.Yi],c),B.p,B.dc,B.o)
 d=A.ap(a6.ay+" "+B.c.X(b1,0),a7,a7,a7,B.WB,a7,a7)
 a2=B.c.e3(120*(b1/g),10,120)
-a2=A.bk(A.b([d,B.cU,A.bW(a7,a7,B.i,a7,a7,new A.c0(a7,a7,a7,B.jj,A.b([new A.bb(0,B.L,A.z(a0,244,67,54),B.dd,6)],a1),B.Kh,B.a5),a7,a2,a7,a7,a7,a7,44),B.bn,B.YY],c),B.p,B.dc,B.o)
+a2=A.bk(A.b([d,B.cU,A.bW(a7,a7,B.i,a7,a7,new A.c0(a7,a7,a7,B.jj,A.b([new A.bb(0,B.L,A.z(a0,244,67,54),B.dd,6)],a1),B.Kh,B.a5),a7,a2,a7,a7,a7,a7,44),B.bn,B.YZ],c),B.p,B.dc,B.o)
 d=a6.ay
 a3=b0-b1
 a4=B.c.X(a3,0)
@@ -46258,7 +46258,7 @@ a4=t.t_
 a4=a5?A.b([B.F9,B.eK],a4):A.b([B.jG,B.ny],a4)
 e=A.h9(new A.b1(B.by,A.bk(A.b([p,B.fJ,A.ds(A.bK(A.b([a,a2,A.bk(A.b([d,B.cU,A.bW(a7,a7,B.i,a7,a7,new A.c0(a7,a7,a7,B.jj,A.b([new A.bb(0,B.L,A.z(a0,33,150,243),B.dd,6)],a1),new A.jI(B.dC,B.cw,B.bW,a4,a7,a7),B.a5),a7,a3,a7,a7,a7,a7,44),B.bn,B.Zt],c),B.p,B.dc,B.o)],c),B.nW,B.vr,B.o),165,a7)],c),B.aK,B.q,B.o),a7),a7,a7,new A.aG(e,B.j))
 a3=A.b_(18)
-a4=A.b([A.bK(A.b([B.HV,A.bK(A.b([A.dn(!1,B.Z4,B.i,a7,a7,a7,a7,a7,a6.gah2(),a7,A.Bl(a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,B.n,B.c1,a7,a7,a7,B.hX,a7,a7)),B.Sr,A.dn(!1,B.Yu,B.i,a7,a7,a7,a7,a7,a6.gah_(),a7,A.Bl(a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,B.n,B.c1,a7,a7,a7,B.hX,a7,a7))],c),B.p,B.q,B.a8)],c),B.p,B.aF,B.o),B.fH],c)
+a4=A.b([A.bK(A.b([B.HV,A.bK(A.b([A.dn(!1,B.Z4,B.i,a7,a7,a7,a7,a7,a6.gah2(),a7,A.Bl(a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,B.n,B.c1,a7,a7,a7,B.hX,a7,a7)),B.Sr,A.dn(!1,B.Yt,B.i,a7,a7,a7,a7,a7,a6.gah_(),a7,A.Bl(a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,a7,B.n,B.c1,a7,a7,a7,B.hX,a7,a7))],c),B.p,B.q,B.a8)],c),B.p,B.aF,B.o),B.fH],c)
 B.b.R(a4,J.dz(a6.r,new A.agd(a6,a8),t.l7))
 return A.i6(A.bk(A.b([a9,B.ap,f,B.bs,b,B.bs,e,B.bs,A.h9(new A.b1(B.by,A.bk(a4,B.aK,B.q,B.o),a7),a7,a7,new A.aG(a3,B.j)),B.bs],c),B.bR,B.q,B.o),B.by,B.a4)},
 ah3(){var s,r,q,p=this,o=null,n={},m=J.fv(p.r)?J.ag(J.ag(p.r,0),"name"):"Food & Dining"
@@ -46296,7 +46296,7 @@ g=A.h9(A.bk(A.b([f,B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.Je,i,i,!1,i,i,i,A.ap("Currentl
 e=A.ap("2. \ud83d\udd10 Privacy & Security Controls",i,i,i,B.dr,i,i)
 s=A.b_(18)
 f=j.id
-f=A.b([A.NB(i,new A.agQ(j),B.p3,A.ap(f?"Active (Tap switch to disable)":"Disabled",i,i,i,i,i,i),B.Yo,f)],r)
+f=A.b([A.NB(i,new A.agQ(j),B.p3,A.ap(f?"Active (Tap switch to disable)":"Disabled",i,i,i,i,i,i),B.Yn,f)],r)
 if(j.id){q=A.ap(j.Ew(j.k1),i,i,i,i,i,i)
 p=j.k1
 o=t.b_
@@ -46306,16 +46306,16 @@ B.b.R(f,A.b([B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.J5,i,i,!1,i,i,i,q,i,B.YH,A.J5(n,new 
 f.push(A.NB(i,new A.agS(j),B.Jh,B.Zb,B.YK,j.dx))
 f.push(B.dS)
 q=j.fr
-f.push(A.NB(i,new A.agT(j),B.J7,A.ap(q?"Active PIN: "+j.fx:"Disabled (Tap to set PIN)",i,i,i,i,i,i),B.Yl,q))
+f.push(A.NB(i,new A.agT(j),B.J7,A.ap(q?"Active PIN: "+j.fx:"Disabled (Tap to set PIN)",i,i,i,i,i,i),B.Yk,q))
 f=A.h9(A.bk(f,B.p,B.q,B.o),i,i,new A.aG(s,B.j))
 s=A.ap("3. \ud83d\udcbe Data Backup & Report Exporter",i,i,i,B.dr,i,i)
 q=A.b_(18)
-q=A.h9(A.bk(A.b([A.mD(!1,i,i,i,!0,i,i,!1,B.IY,i,new A.agU(j),!1,i,i,i,B.Y4,i,B.Yf,B.p2,i),B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.Jf,i,new A.agV(j),!1,i,i,i,B.Yn,i,B.Ze,B.p2,i),B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.Jj,i,new A.agW(j),!1,i,i,i,B.Yb,i,B.Yt,i,i)],r),B.p,B.q,B.o),i,i,new A.aG(q,B.j))
+q=A.h9(A.bk(A.b([A.mD(!1,i,i,i,!0,i,i,!1,B.IY,i,new A.agU(j),!1,i,i,i,B.Zh,i,B.Yw,B.p2,i),B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.Jf,i,new A.agV(j),!1,i,i,i,B.Ym,i,B.Ze,B.p2,i),B.dS,A.mD(!1,i,i,i,!0,i,i,!1,B.Jj,i,new A.agW(j),!1,i,i,i,B.Yb,i,B.Ys,i,i)],r),B.p,B.q,B.o),i,i,new A.aG(q,B.j))
 p=A.ap("4. \ud83c\udfa8 Themes & Accent Color Palette",i,i,i,B.dr,i,i)
 o=A.b_(18)
 l=j.fy
 k=A.kM(l?B.oR:B.oU,B.l1,i,i)
-return A.az2(A.b([new A.b1(B.he,h,i),g,B.fJ,new A.b1(B.he,e,i),f,B.fJ,new A.b1(B.he,s,i),q,B.fJ,new A.b1(B.he,p,i),A.h9(new A.b1(B.by,A.bk(A.b([A.NB(B.ay,new A.agX(j),k,A.ap(l?"Dark Theme Active":"Light Theme Active",i,i,i,i,i,i),B.YP,l),B.GY,B.Yw,B.ap,A.bK(A.b([j.xt("Indigo \ud83d\udc99",B.nt),j.xt("Emerald \ud83d\udc9a",B.EE),j.xt("Purple \ud83d\udc9c",B.Fl),j.xt("Midnight \ud83c\udf19",B.dK)],r),B.p,B.vq,B.o)],r),B.aK,B.q,B.o),i),i,i,new A.aG(o,B.j)),B.St],r),B.by,i,!1)},
+return A.az2(A.b([new A.b1(B.he,h,i),g,B.fJ,new A.b1(B.he,e,i),f,B.fJ,new A.b1(B.he,s,i),q,B.fJ,new A.b1(B.he,p,i),A.h9(new A.b1(B.by,A.bk(A.b([A.NB(B.ay,new A.agX(j),k,A.ap(l?"Dark Theme Active":"Light Theme Active",i,i,i,i,i,i),B.YP,l),B.GY,B.Yv,B.ap,A.bK(A.b([j.xt("Indigo \ud83d\udc99",B.nt),j.xt("Emerald \ud83d\udc9a",B.EE),j.xt("Purple \ud83d\udc9c",B.Fl),j.xt("Midnight \ud83c\udf19",B.dK)],r),B.p,B.vq,B.o)],r),B.aK,B.q,B.o),i),i,i,new A.aG(o,B.j)),B.St],r),B.by,i,!1)},
 ah1(){var s=null,r=$.ae(),q=this.c
 q.toString
 A.f6(s,s,!0,s,new A.aiZ(this,new A.cr(B.b_,r)),q,s,!0,t.z)},
@@ -46456,7 +46456,7 @@ $S:32}
 A.ahD.prototype={
 $2(a,b){var s=null,r=A.b_(20),q=this.c,p=this.b,o=p.p1,n=this.a,m=A.a1(o).i("ad<1,jn>"),l=t.p
 m=A.bk(A.b([A.dK(!0,B.ah,!1,s,!0,B.w,s,A.e0(),q,s,s,s,s,s,2,B.JN,B.I,!0,s,!0,s,!1,s,s,s,s,s,s,s,1,s,s,!1,"\u2022",s,s,s,s,s,!1,s,!1,s,!0,s,B.an,s,s,B.ac,B.a6,s,s,s,s,s,s,s,B.R,s,B.av,s,s,s,s),B.iA,B.Z2,B.bn,A.uI(B.dt,A.a2(new A.ad(o,new A.ahA(n,p,b),m),!0,m.i("as.E")),B.eq,8,8)],l),B.p,B.q,B.a8)
-return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.ahB(a),s,s),A.fc(!1,B.YS,B.i,s,s,s,s,s,new A.ahC(n,p,q,a),s,A.dH(s,s,p.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],l),m,new A.aG(r,B.j),B.Yg)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.ahB(a),s,s),A.fc(!1,B.YT,B.i,s,s,s,s,s,new A.ahC(n,p,q,a),s,A.dH(s,s,p.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],l),m,new A.aG(r,B.j),B.Yf)},
 $S:37}
 A.ahA.prototype={
 $1(a){var s=null,r=A.ap(a,s,s,s,B.Vv,s,s),q=this.a,p=q.a,o=this.b.go.a
@@ -46577,7 +46577,7 @@ q=A.bK(A.b([A.ap("\ud83d\udcc5 Payment Date: "+B.d.ah(s.a.jC(),0,10),n,n,n,B.ct,
 p=s.b
 o=J.dz(i.f,new A.aij(),t.b7)
 p=A.i6(A.bk(A.b([h,B.fK,k,B.iA,q,B.fH,A.jv(B.JC,A.a2(o,!0,A.n(o).i("as.E")),new A.aik(s,b),p,t.N)],r),B.aK,B.q,B.a8),n,B.a4)
-return A.f7(A.b([A.dn(!1,B.bq,B.i,n,n,n,n,n,new A.ail(a),n,n),A.fc(!1,B.Yr,B.i,n,n,n,n,n,new A.aim(s,i,a,l),n,A.dH(n,n,i.go,n,n,n,n,n,n,n,n,n,n,n,new A.aG(A.b_(12),B.j),n,n,n,n))],r),p,new A.aG(m,B.j),j)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,n,n,n,n,n,new A.ail(a),n,n),A.fc(!1,B.Yq,B.i,n,n,n,n,n,new A.aim(s,i,a,l),n,A.dH(n,n,i.go,n,n,n,n,n,n,n,n,n,n,n,new A.aG(A.b_(12),B.j),n,n,n,n))],r),p,new A.aG(m,B.j),j)},
 $S:37}
 A.aii.prototype={
 $0(){var s=0,r=A.M(t.H),q=this,p,o,n,m,l
@@ -46770,7 +46770,7 @@ return s.a.agI(s.b,s.c,s.d,s.e)},
 $S:0}
 A.aiD.prototype={
 $1(a){var s=null,r=A.b_(20),q=this.b,p=A.dK(!0,B.ah,!1,s,!0,B.w,s,A.e0(),q,s,s,s,s,s,2,B.JH,B.I,!0,s,!0,s,!1,s,A.b([new A.fF(A.dJ("^\\d*\\.?\\d*",!0,!1),!0,"")],t.R),s,B.cs,s,s,s,1,s,s,!1,"\u2022",s,s,s,s,s,!1,s,!1,s,!0,s,B.an,s,s,B.ac,B.a6,s,s,s,s,s,s,s,B.R,s,B.av,s,s,s,s),o=this.a
-return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.aiB(a),s,s),A.fc(!1,B.YU,B.i,s,s,s,s,s,new A.aiC(o,q,a),s,A.dH(s,s,o.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],t.p),p,new A.aG(r,B.j),B.Y3)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.aiB(a),s,s),A.fc(!1,B.YV,B.i,s,s,s,s,s,new A.aiC(o,q,a),s,A.dH(s,s,o.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],t.p),p,new A.aG(r,B.j),B.Y3)},
 $S:36}
 A.aiB.prototype={
 $0(){A.bJ(this.a,!1).bX(null)
@@ -46800,7 +46800,7 @@ return q},
 $S:10}
 A.ahl.prototype={
 $1(a){var s=this,r=null,q=s.a,p=t.p,o=A.bK(A.b([A.ap(s.b,r,r,r,B.AZ,r,r),A.iE(r,r,B.IU,r,new A.ahj(q,a,s.c),r,r,r)],p),B.p,B.aF,B.o),n=q.ay,m=s.d,l=B.c.X(m,2)
-return new A.b1(B.an,A.bk(A.b([o,A.ap("Available Balance: "+n+" "+l,r,r,r,A.du(r,r,m<0?B.b2:B.bc,r,r,r,r,r,r,r,r,14,r,r,B.f_,r,r,!0,r,r,r,r,r,r,r,r),r,r),B.GZ,B.Y5,B.fH,A.eA(q.Mo(s.e),1)],p),B.aK,B.q,B.o),r)},
+return new A.b1(B.an,A.bk(A.b([o,A.ap("Available Balance: "+n+" "+l,r,r,r,A.du(r,r,m<0?B.b2:B.bc,r,r,r,r,r,r,r,r,14,r,r,B.f_,r,r,!0,r,r,r,r,r,r,r,r),r,r),B.GZ,B.Y4,B.fH,A.eA(q.Mo(s.e),1)],p),B.aK,B.q,B.o),r)},
 $S:311}
 A.ahj.prototype={
 $0(){A.bJ(this.b,!1).bX(null)
@@ -46812,7 +46812,7 @@ return new A.fk(new A.aiy(s.a,s.b,s.c,s.d,s.e),null)},
 $S:32}
 A.aiy.prototype={
 $2(a,b){var s=this,r=null,q=A.b_(20),p=s.c,o=s.d,n=s.b,m=n.ok,l=s.a,k=A.a1(m).i("ad<1,jn>"),j=t.p
-k=A.bk(A.b([A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),p,r,r,r,r,r,2,B.JI,B.I,!0,r,!0,r,!1,r,r,r,r,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),o,r,r,r,r,r,2,B.pa,B.I,!0,r,!0,r,!1,r,A.b([new A.fF(A.dJ("^\\d*\\.?\\d*",!0,!1),!0,"")],t.R),r,B.cs,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,B.Ys,B.cU,A.uI(B.dt,A.a2(new A.ad(m,new A.aiv(l,b),k),!0,k.i("as.E")),B.eq,0,8)],j),B.p,B.q,B.a8)
+k=A.bk(A.b([A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),p,r,r,r,r,r,2,B.JI,B.I,!0,r,!0,r,!1,r,r,r,r,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),o,r,r,r,r,r,2,B.pa,B.I,!0,r,!0,r,!1,r,A.b([new A.fF(A.dJ("^\\d*\\.?\\d*",!0,!1),!0,"")],t.R),r,B.cs,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,B.Yr,B.cU,A.uI(B.dt,A.a2(new A.ad(m,new A.aiv(l,b),k),!0,k.i("as.E")),B.eq,0,8)],j),B.p,B.q,B.a8)
 return A.f7(A.b([A.dn(!1,B.bq,B.i,r,r,r,r,r,new A.aiw(a),r,r),A.fc(!1,B.YG,B.i,r,r,r,r,r,new A.aix(l,n,p,o,a,s.e),r,A.dH(r,r,n.go,r,r,r,r,r,r,r,r,r,r,r,new A.aG(A.b_(12),B.j),r,r,r,r))],j),k,new A.aG(q,B.j),B.YO)},
 $S:37}
 A.aiv.prototype={
@@ -46852,7 +46852,7 @@ $S:32}
 A.ahr.prototype={
 $2(a,b){var s=this,r=null,q=A.b_(20),p=s.c,o=s.d,n=s.b,m=n.ok,l=s.a,k=A.a1(m).i("ad<1,jn>"),j=t.p
 k=A.bk(A.b([A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),p,r,r,r,r,r,2,B.Js,B.I,!0,r,!0,r,!1,r,r,r,r,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,A.dK(!0,B.ah,!1,r,!0,B.w,r,A.e0(),o,r,r,r,r,r,2,B.pa,B.I,!0,r,!0,r,!1,r,A.b([new A.fF(A.dJ("^\\d*\\.?\\d*",!0,!1),!0,"")],t.R),r,B.cs,r,r,r,1,r,r,!1,"\u2022",r,r,r,r,r,!1,r,!1,r,!0,r,B.an,r,r,B.ac,B.a6,r,r,r,r,r,r,r,B.R,r,B.av,r,r,r,r),B.ap,B.Z7,B.cU,A.uI(B.dt,A.a2(new A.ad(m,new A.aho(l,b),k),!0,k.i("as.E")),B.eq,0,8)],j),B.p,B.q,B.a8)
-return A.f7(A.b([A.dn(!1,B.bq,B.i,r,r,r,r,r,new A.ahp(a),r,r),A.fc(!1,B.XZ,B.i,r,r,r,r,r,new A.ahq(l,n,p,o,a),r,A.dH(r,r,n.go,r,r,r,r,r,r,r,r,r,r,r,new A.aG(A.b_(12),B.j),r,r,r,r))],j),k,new A.aG(q,B.j),B.Yp)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,r,r,r,r,r,new A.ahp(a),r,r),A.fc(!1,B.XZ,B.i,r,r,r,r,r,new A.ahq(l,n,p,o,a),r,A.dH(r,r,n.go,r,r,r,r,r,r,r,r,r,r,r,new A.aG(A.b_(12),B.j),r,r,r,r))],j),k,new A.aG(q,B.j),B.Yo)},
 $S:37}
 A.aho.prototype={
 $1(a){var s=null,r=this.a
@@ -47176,7 +47176,7 @@ $1(a){return new A.fk(new A.ahw(this.a,this.b,this.c),null)},
 $S:32}
 A.ahw.prototype={
 $2(a,b){var s=null,r=A.b_(20),q=this.b,p=this.c,o=t.p,n=A.bk(A.b([A.dK(!0,B.ah,!1,s,!0,B.w,s,A.e0(),q,s,s,s,s,s,2,B.JK,B.I,!0,s,!0,s,!1,s,s,s,s,s,s,s,1,s,s,!1,"\u2022",s,s,s,s,s,!1,s,!1,s,!0,s,B.an,s,s,B.ac,B.a6,s,s,s,s,s,s,s,B.R,s,B.av,s,s,s,s),B.ap,A.dK(!0,B.ah,!1,s,!0,B.w,s,A.e0(),p,s,s,s,s,s,2,B.Jx,B.I,!0,s,!0,s,!1,s,A.b([new A.fF(A.dJ("^\\d*\\.?\\d*",!0,!1),!0,"")],t.R),s,B.cs,s,s,s,1,s,s,!1,"\u2022",s,s,s,s,s,!1,s,!1,s,!0,s,B.an,s,s,B.ac,B.a6,s,s,s,s,s,s,s,B.R,s,B.av,s,s,s,s)],o),B.p,B.q,B.a8),m=this.a
-return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.ahu(a),s,s),A.fc(!1,B.Yh,B.i,s,s,s,s,s,new A.ahv(m,q,p,a),s,A.dH(s,s,m.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],o),n,new A.aG(r,B.j),B.Y2)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.ahu(a),s,s),A.fc(!1,B.Yg,B.i,s,s,s,s,s,new A.ahv(m,q,p,a),s,A.dH(s,s,m.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],o),n,new A.aG(r,B.j),B.Y2)},
 $S:37}
 A.ahu.prototype={
 $0(){A.bJ(this.a,!1).bX(null)
@@ -47287,7 +47287,7 @@ while(true)switch(s){case 0:o=q.a
 s=2
 return A.F(o.a.c.oD(),$async$$0)
 case 2:n=b
-A.arH(n,"financeflow_executive_statement.txt","text/plain")
+A.arH(n,"financeflow_executive_statement.pdf","application/pdf")
 p=o.c
 p.toString
 A.f6(null,null,!0,null,new A.agI(o,n),p,null,!0,t.z)
@@ -47296,13 +47296,13 @@ return A.L($async$$0,r)},
 $S:4}
 A.agI.prototype={
 $1(a){var s=null,r=A.b_(20),q=this.b,p=A.i6(A.aA3(q,B.Wb),s,B.a4)
-return A.f7(A.b([A.D_(B.p0,B.YZ,new A.agC(q,a),A.dH(s,s,B.bc,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)),A.D_(B.p4,B.YR,new A.agD(q,a),A.dH(s,s,this.a.go,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)),A.dn(!1,B.B2,B.i,s,s,s,s,s,new A.agE(a),s,s)],t.p),p,new A.aG(r,B.j),B.XW)},
+return A.f7(A.b([A.D_(B.p0,B.Y6,new A.agC(q,a),A.dH(s,s,B.bc,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)),A.D_(B.p4,B.YR,new A.agD(q,a),A.dH(s,s,this.a.go,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s)),A.dn(!1,B.B2,B.i,s,s,s,s,s,new A.agE(a),s,s)],t.p),p,new A.aG(r,B.j),B.XW)},
 $S:36}
 A.agC.prototype={
-$0(){A.arH(this.a,"financeflow_executive_statement.txt","text/plain")
+$0(){A.arH(this.a,"financeflow_executive_statement.pdf","application/pdf")
 var s=this.b.a4(t.Pu)
 s.toString
-s.f.nm(B.SL)},
+s.f.nm(B.SK)},
 $S:0}
 A.agD.prototype={
 $0(){A.rc(new A.mf(this.a))
@@ -47310,7 +47310,7 @@ var s=this.b
 A.bJ(s,!1).bX(null)
 s=s.a4(t.Pu)
 s.toString
-s.f.nm(B.SK)},
+s.f.nm(B.SL)},
 $S:0}
 A.agE.prototype={
 $0(){A.bJ(this.a,!1).bX(null)
@@ -47370,7 +47370,7 @@ return A.L($async$$0,r)},
 $S:4}
 A.agG.prototype={
 $1(a){var s=null,r=A.b_(20)
-return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.agx(a),s,s),A.dn(!1,B.YM,B.i,s,s,s,s,s,new A.agy(a),s,s)],t.p),B.YV,new A.aG(r,B.j),B.Yk)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.agx(a),s,s),A.dn(!1,B.YM,B.i,s,s,s,s,s,new A.agy(a),s,s)],t.p),B.YW,new A.aG(r,B.j),B.Yj)},
 $S:36}
 A.agx.prototype={
 $0(){A.bJ(this.a,!1).bX(!1)
@@ -47443,7 +47443,7 @@ $S:32}
 A.aiK.prototype={
 $2(a,b){var s=null,r=A.b_(20),q=this.c,p=this.b,o=p.k2,n=this.a,m=A.a1(o).i("ad<1,jn>"),l=t.p
 m=A.i6(A.bk(A.b([A.dK(!0,B.ah,!1,s,!0,B.w,s,A.e0(),q,s,s,s,s,s,2,B.JG,B.I,!0,s,!0,s,!1,s,s,s,s,s,s,s,1,s,s,!1,"\u2022",s,s,s,s,s,!1,s,!1,s,!0,s,B.an,s,s,B.ac,B.a6,s,s,s,s,s,s,s,B.R,s,B.av,s,s,s,s),B.ap,B.YD,B.bn,A.uI(B.dt,A.a2(new A.ad(o,new A.aiH(n,b),m),!0,m.i("as.E")),B.eq,8,8)],l),B.p,B.q,B.a8),s,B.a4)
-return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.aiI(a),s,s),A.fc(!1,B.Zm,B.i,s,s,s,s,s,new A.aiJ(n,p,q,a),s,A.dH(s,s,p.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],l),m,new A.aG(r,B.j),B.Zh)},
+return A.f7(A.b([A.dn(!1,B.bq,B.i,s,s,s,s,s,new A.aiI(a),s,s),A.fc(!1,B.Zm,B.i,s,s,s,s,s,new A.aiJ(n,p,q,a),s,A.dH(s,s,p.go,s,s,s,s,s,s,s,s,s,s,s,new A.aG(A.b_(12),B.j),s,s,s,s))],l),m,new A.aG(r,B.j),B.Zi)},
 $S:37}
 A.aiH.prototype={
 $1(a){var s=null,r=this.a
@@ -95919,11 +95919,11 @@ B.bs=new A.d1(null,16,null,null)
 B.N=new A.hP(6)
 B.e=new A.Bn(0)
 B.Wj=new A.m(!0,B.l,null,null,null,null,18,B.N,null,null,null,null,null,null,null,null,null,B.e,null,null,null,null,null,null,null,null)
-B.YX=new A.af("FinanceFlow Privacy Shield",null,B.Wj,null,null,null,null,null,null)
+B.YY=new A.af("FinanceFlow Privacy Shield",null,B.Wj,null,null,null,null,null,null)
 B.bn=new A.d1(null,8,null,null)
 B.UC=new A.m(!0,B.T,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,B.e,null,null,null,null,null,null,null,null)
 B.Ye=new A.af("Financial numbers hidden while backgrounded.",null,B.UC,null,null,null,null,null,null)
-B.Lv=A.b(s([B.IW,B.bs,B.YX,B.bn,B.Ye]),t.p)
+B.Lv=A.b(s([B.IW,B.bs,B.YY,B.bn,B.Ye]),t.p)
 B.Gf=new A.wT(B.a4,B.kY,B.o,B.p,null,B.bu,null,B.Lv,null)
 B.nP=new A.it(0,"cut")
 B.nQ=new A.it(1,"copy")
@@ -96539,8 +96539,8 @@ B.Kl=A.b(s([B.CD,B.CE]),t.V)
 B.Kn=A.b(s([0,1]),t.n)
 B.Yz=new A.af("Monthly",null,null,null,null,null,null,null,null)
 B.H2=new A.di("Monthly",B.Yz,B.bO,null,t.b7)
-B.Y6=new A.af("Weekly",null,null,null,null,null,null,null,null)
-B.H3=new A.di("Weekly",B.Y6,B.bO,null,t.b7)
+B.Y5=new A.af("Weekly",null,null,null,null,null,null,null,null)
+B.H3=new A.di("Weekly",B.Y5,B.bO,null,t.b7)
 B.XY=new A.af("Yearly",null,null,null,null,null,null,null,null)
 B.H6=new A.di("Yearly",B.XY,B.bO,null,t.b7)
 B.KD=A.b(s([B.H2,B.H3,B.H6]),t.FG)
@@ -96619,8 +96619,8 @@ B.YC=new A.af("Expense \ud83d\udd34",null,null,null,null,null,null,null,null)
 B.H1=new A.di("expense",B.YC,B.bO,null,t.b7)
 B.Za=new A.af("Income \ud83d\udfe2",null,null,null,null,null,null,null,null)
 B.H4=new A.di("income",B.Za,B.bO,null,t.b7)
-B.Yi=new A.af("Inter-Wallet Transfer \ud83d\udd04",null,null,null,null,null,null,null,null)
-B.H5=new A.di("transfer",B.Yi,B.bO,null,t.b7)
+B.Yh=new A.af("Inter-Wallet Transfer \ud83d\udd04",null,null,null,null,null,null,null,null)
+B.H5=new A.di("transfer",B.Yh,B.bO,null,t.b7)
 B.Lw=A.b(s([B.H1,B.H4,B.H5]),t.FG)
 B.pr=A.b(s([0,0,65490,12287,65535,34815,65534,18431]),t.t)
 B.ps=A.b(s([0,0,32776,33792,1,10240,0,0]),t.t)
@@ -97908,8 +97908,8 @@ B.io=new A.iQ(null,null)
 B.J2=new A.bD(B.oW,null,B.hT,null,null)
 B.ei=new A.d1(8,null,null,null)
 B.lX=new A.m(!0,null,null,null,null,null,16,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.Zi=new A.af("OTP Security Authorization",null,B.lX,null,null,null,null,null,null)
-B.Lk=A.b(s([B.J2,B.ei,B.Zi]),t.p)
+B.Zj=new A.af("OTP Security Authorization",null,B.lX,null,null,null,null,null,null)
+B.Lk=A.b(s([B.J2,B.ei,B.Zj]),t.p)
 B.QM=new A.tM(B.aD,B.q,B.o,B.p,null,B.bu,null,B.Lk,null)
 B.Ij=new A.bl(57527,!1)
 B.IX=new A.bD(B.Ij,null,B.bb,null,null)
@@ -98131,18 +98131,18 @@ B.SF=new A.jW(3,"hide")
 B.a1N=new A.jW(4,"remove")
 B.Ay=new A.jW(5,"timeout")
 B.SG=new A.u5(null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.Yv=new A.af("\ud83d\udce5 File download triggered for financeflow_transactions.csv!",null,null,null,null,null,null,null,null)
-B.SH=new A.i9(B.Yv,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
+B.Yu=new A.af("\ud83d\udce5 File download triggered for financeflow_transactions.csv!",null,null,null,null,null,null,null,null)
+B.SH=new A.i9(B.Yu,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
 B.Y_=new A.af("Transaction authorized and saved.",null,null,null,null,null,null,null,null)
 B.SI=new A.i9(B.Y_,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
 B.YJ=new A.af("Invalid code! Try 123456.",null,null,null,null,null,null,null,null)
 B.SJ=new A.i9(B.YJ,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
-B.YW=new A.af("\ud83d\udccb Executive Statement copied to clipboard!",null,null,null,null,null,null,null,null)
-B.SK=new A.i9(B.YW,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
-B.Zj=new A.af("\ud83d\udce5 File download triggered for Executive Statement!",null,null,null,null,null,null,null,null)
-B.SL=new A.i9(B.Zj,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
-B.Yq=new A.af("\ud83d\udccb CSV data copied to clipboard!",null,null,null,null,null,null,null,null)
-B.SM=new A.i9(B.Yq,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
+B.YS=new A.af("\ud83d\udce5 PDF File download triggered for Executive Statement!",null,null,null,null,null,null,null,null)
+B.SK=new A.i9(B.YS,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
+B.YX=new A.af("\ud83d\udccb Executive Statement copied to clipboard!",null,null,null,null,null,null,null,null)
+B.SL=new A.i9(B.YX,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
+B.Yp=new A.af("\ud83d\udccb CSV data copied to clipboard!",null,null,null,null,null,null,null,null)
+B.SM=new A.i9(B.Yp,null,null,null,null,null,null,null,null,null,null,null,null,B.d2,null,null,null,B.w,null)
 B.Az=new A.Nk(0,"permissive")
 B.a1O=new A.Nk(1,"normal")
 B.lK=new A.No(null)
@@ -98526,9 +98526,9 @@ B.Y0=new A.af("Financial Goals",null,B.lW,null,null,null,null,null,null)
 B.Y1=new A.af("Exported CSV Spreadsheet",null,null,null,null,null,null,null,null)
 B.Y2=new A.af("Add Savings Goal",null,null,null,null,null,null,null,null)
 B.Y3=new A.af("Set Monthly Target Budget",null,null,null,null,null,null,null,null)
-B.Y4=new A.af("Download printable financial report file directly",null,null,null,null,null,null,null,null)
-B.Y5=new A.af("Transactions for this Wallet:",null,B.dq,null,null,null,null,null,null)
+B.Y4=new A.af("Transactions for this Wallet:",null,B.dq,null,null,null,null,null,null)
 B.lV=new A.m(!0,B.l,null,null,null,null,null,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.Y6=new A.af("Download PDF File",null,B.lV,null,null,null,null,null,null)
 B.Y7=new A.af("Add Goal",null,B.lV,null,null,null,null,null,null)
 B.Y8=new A.af("Monthly Target Budget",null,B.iJ,null,null,null,null,null,null)
 B.Y9=new A.af("Verify & Save",null,B.bd,null,null,null,null,null,null)
@@ -98537,23 +98537,23 @@ B.Yb=new A.af("Factory reset all local records",null,null,null,null,null,null,nu
 B.Yc=new A.af("Download CSV File",null,B.lV,null,null,null,null,null,null)
 B.W_=new A.m(!0,B.P,null,null,null,null,11,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.Yd=new A.af("You haven't logged any transactions today yet!",null,B.W_,null,null,null,null,null,null)
-B.Yf=new A.af("\ud83d\udcc4 Export Executive Statement (PDF / Text)",null,null,null,null,null,null,null,null)
-B.Yg=new A.af("\u2795 Create Custom Category",null,B.lX,null,null,null,null,null,null)
-B.Yh=new A.af("Create Goal",null,B.bd,null,null,null,null,null,null)
+B.Yf=new A.af("\u2795 Create Custom Category",null,B.lX,null,null,null,null,null,null)
+B.Yg=new A.af("Create Goal",null,B.bd,null,null,null,null,null,null)
 B.iK=new A.m(!0,null,null,null,null,null,11,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.Yj=new A.af("\ud83d\udfe2 Income",null,B.iK,null,null,null,null,null,null)
-B.Yk=new A.af("Reset Profile & Data?",null,null,null,null,null,null,null,null)
-B.Yl=new A.af("Optional 4-Digit PIN Lock",null,null,null,null,null,null,null,null)
+B.Yi=new A.af("\ud83d\udfe2 Income",null,B.iK,null,null,null,null,null,null)
+B.Yj=new A.af("Reset Profile & Data?",null,null,null,null,null,null,null,null)
+B.Yk=new A.af("Optional 4-Digit PIN Lock",null,null,null,null,null,null,null,null)
 B.Xe=new A.m(!0,B.dZ,null,null,null,null,null,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.Ym=new A.af("Loading FinanceFlow...",null,B.Xe,null,null,null,null,null,null)
-B.Yn=new A.af("Download transactions spreadsheet (.csv) file directly",null,null,null,null,null,null,null,null)
-B.Yo=new A.af("\ud83d\udd14 Daily Expense Reminder",null,null,null,null,null,null,null,null)
-B.Yp=new A.af("Add Custom Account / Wallet",null,null,null,null,null,null,null,null)
-B.Yr=new A.af("Confirm Payment",null,B.bd,null,null,null,null,null,null)
-B.Ys=new A.af("Select Wallet Icon:",null,B.ct,null,null,null,null,null,null)
-B.Yt=new A.af("Reset & Wipe Data",null,null,null,null,null,null,null,null)
-B.Yu=new A.af("Set All",null,B.iK,null,null,null,null,null,null)
-B.Yw=new A.af("Select Accent Color Theme:",null,B.dq,null,null,null,null,null,null)
+B.Yl=new A.af("Loading FinanceFlow...",null,B.Xe,null,null,null,null,null,null)
+B.Ym=new A.af("Download transactions spreadsheet (.csv) file directly",null,null,null,null,null,null,null,null)
+B.Yn=new A.af("\ud83d\udd14 Daily Expense Reminder",null,null,null,null,null,null,null,null)
+B.Yo=new A.af("Add Custom Account / Wallet",null,null,null,null,null,null,null,null)
+B.Yq=new A.af("Confirm Payment",null,B.bd,null,null,null,null,null,null)
+B.Yr=new A.af("Select Wallet Icon:",null,B.ct,null,null,null,null,null,null)
+B.Ys=new A.af("Reset & Wipe Data",null,null,null,null,null,null,null,null)
+B.Yt=new A.af("Set All",null,B.iK,null,null,null,null,null,null)
+B.Yv=new A.af("Select Accent Color Theme:",null,B.dq,null,null,null,null,null,null)
+B.Yw=new A.af("\ud83d\udcc4 Export Executive PDF Statement",null,null,null,null,null,null,null,null)
 B.Yy=new A.af("Save Limit",null,B.bd,null,null,null,null,null,null)
 B.YA=new A.af("Default Currency Selector",null,null,null,null,null,null,null,null)
 B.YB=new A.af("Save PIN",null,B.bd,null,null,null,null,null,null)
@@ -98575,13 +98575,12 @@ B.YO=new A.af("Edit Wallet Details",null,null,null,null,null,null,null,null)
 B.YP=new A.af("Dark Mode / Light Mode",null,null,null,null,null,null,null,null)
 B.YQ=new A.af("Add Recurring Subscription",null,null,null,null,null,null,null,null)
 B.YR=new A.af("Copy Text",null,B.bd,null,null,null,null,null,null)
-B.YS=new A.af("Save Category",null,B.bd,null,null,null,null,null,null)
-B.YT=new A.af("\ud83d\udcca Cashflow Comparison (Vertical Bar Chart)",null,B.dr,null,null,null,null,null,null)
-B.YU=new A.af("Save Budget",null,B.bd,null,null,null,null,null,null)
+B.YT=new A.af("Save Category",null,B.bd,null,null,null,null,null,null)
+B.YU=new A.af("\ud83d\udcca Cashflow Comparison (Vertical Bar Chart)",null,B.dr,null,null,null,null,null,null)
+B.YV=new A.af("Save Budget",null,B.bd,null,null,null,null,null,null)
 B.B3=new A.af("Change Date",null,null,null,null,null,null,null,null)
-B.YV=new A.af("This will wipe all local wallets and transactions. Cannot be undone!",null,null,null,null,null,null,null,null)
-B.YY=new A.af("\ud83d\udd34 Expense",null,B.iK,null,null,null,null,null,null)
-B.YZ=new A.af("Download File",null,B.lV,null,null,null,null,null,null)
+B.YW=new A.af("This will wipe all local wallets and transactions. Cannot be undone!",null,null,null,null,null,null,null,null)
+B.YZ=new A.af("\ud83d\udd34 Expense",null,B.iK,null,null,null,null,null,null)
 B.Z_=new A.af("Set Single Category Budget",null,null,null,null,null,null,null,null)
 B.Z0=new A.af("Financial Insights & AI Analytics",null,B.lX,null,null,null,null,null,null)
 B.Z1=new A.af("No Savings Goals Added Yet!",null,B.lW,null,null,null,null,null,null)
@@ -98600,7 +98599,8 @@ B.Ze=new A.af("Export Data to CSV / Excel",null,null,null,null,null,null,null,nu
 B.Ts=new A.m(!0,null,null,"Outfit",null,null,28,B.N,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.Zf=new A.af("Welcome to FinanceFlow",null,B.Ts,B.ej,null,null,null,null,null)
 B.Zg=new A.af("Add Sub",null,null,null,null,null,null,null,null)
-B.Zh=new A.af("Edit Profile & Avatar",null,null,null,null,null,null,null,null)
+B.Zh=new A.af("Download printable financial report PDF file directly",null,null,null,null,null,null,null,null)
+B.Zi=new A.af("Edit Profile & Avatar",null,null,null,null,null,null,null,null)
 B.Zl=new A.af("Enter your profile name to start tracking your private finances.",null,B.AQ,B.ej,null,null,null,null,null)
 B.Zm=new A.af("Save Profile",null,B.bd,null,null,null,null,null,null)
 B.Zn=new A.af("Pick Date",null,null,null,null,null,null,null,null)
