@@ -2244,12 +2244,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                title: const Text('📄 Export Executive Statement (PDF / Text)'),
-                subtitle: const Text('Download printable financial report file directly'),
+                title: const Text('📄 Export Executive PDF Statement'),
+                subtitle: const Text('Download printable financial report PDF file directly'),
                 trailing: const Icon(Icons.download),
                 onTap: () async {
                   final reportStr = await widget.storageService.generatePdfStatementReport();
-                  downloadFile(reportStr, 'financeflow_executive_statement.txt', 'text/plain');
+                  downloadFile(reportStr, 'financeflow_executive_statement.pdf', 'application/pdf');
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -2260,11 +2260,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                           icon: const Icon(Icons.download, size: 16, color: Colors.white),
-                          label: const Text('Download File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: const Text('Download PDF File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           onPressed: () {
-                            downloadFile(reportStr, 'financeflow_executive_statement.txt', 'text/plain');
+                            downloadFile(reportStr, 'financeflow_executive_statement.pdf', 'application/pdf');
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('📥 File download triggered for Executive Statement!')),
+                              const SnackBar(content: Text('📥 PDF File download triggered for Executive Statement!')),
                             );
                           },
                         ),
