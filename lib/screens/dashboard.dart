@@ -455,7 +455,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Scaffold(
         appBar: AppBar(
           elevation: 0,
-          scaffoldBackgroundColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
           title: Row(
             children: [
               Container(
