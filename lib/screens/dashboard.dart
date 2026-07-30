@@ -52,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _dailyReminderEnabled = true;
   int _dailyReminderHour = 20; // 8:00 PM default
 
-  // 24 Avatar Palette Choices
+  // Avatar Palette Choices
   final List<String> _avatars = [
     '👨‍💼', '👩‍💼', '🚀', '💎', '🦁', '👑', '🦊', '🤖',
     '🦄', '🐯', '🦅', '🎯', '⚡', '🔥', '🌟', '🏆',
@@ -131,7 +131,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _formatReminderHour(int hour) {
-    if (hour == 12) return '12:00 PM';
+    if (hour == 0) return '12:00 AM (Midnight)';
+    if (hour == 12) return '12:00 PM (Noon)';
     if (hour > 12) return '${hour - 12}:00 PM';
     return '$hour:00 AM';
   }
@@ -1069,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 3. ANALYTICS TAB (With Dynamic AI Simulator Category Options)
+  // 3. ANALYTICS TAB
   // ----------------------------------------------------
   Widget _buildAnalyticsTab() {
     final monthTxs = _filteredByMonthTransactions;
@@ -1079,7 +1080,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final healthScore = monthIncome > 0 ? (((monthIncome - monthExpense) / monthIncome) * 100).clamp(0, 100).toStringAsFixed(0) : '85';
     final runwayMonths = (_totalNetWorth / (monthExpense > 0 ? monthExpense : 25000.0)).clamp(0.0, 99.0);
 
-    // DYNAMIC AI WHAT-IF SIMULATOR CATEGORIES (Only categories with actual recorded expense transactions)
+    // DYNAMIC AI WHAT-IF SIMULATOR CATEGORIES
     final expenseCategoriesWithTx = _categories.where((cat) {
       final cName = cat['name'].toString();
       return monthTxs.any((t) => (t['type'] == 'expense' || t['type'] == null) && _isCategoryMatch(t['category'].toString(), cName));
@@ -1582,44 +1583,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Savings Goal'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: targetController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
-                decoration: const InputDecoration(labelText: 'Target Amount'),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Add Savings Goal'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Goal Title (e.g. Car Deposit)')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: targetController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                    decoration: const InputDecoration(labelText: 'Target Amount'),
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final t = titleController.text.trim();
-                final target = double.tryParse(targetController.text) ?? 50000.0;
-                if (t.isNotEmpty) {
-                  Navigator.pop(context);
-                  setState(() {
-                    _goals.add({
-                      'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
-                      'title': t,
-                      'target': target,
-                      'current': 0.0,
-                      'icon': Icons.stars,
-                      'color': Colors.purple,
-                    });
-                  });
-                }
-              },
-              child: const Text('Create Goal'),
-            ),
-          ],
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: () {
+                    final t = titleController.text.trim();
+                    final target = double.tryParse(targetController.text) ?? 50000.0;
+                    if (t.isNotEmpty) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _goals.add({
+                          'id': 'g-${DateTime.now().millisecondsSinceEpoch}',
+                          'title': t,
+                          'target': target,
+                          'current': 0.0,
+                          'icon': Icons.stars,
+                          'color': Colors.purple,
+                        });
+                      });
+                    }
+                  },
+                  child: const Text('Create Goal'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1640,7 +1645,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               ListTile(
                 leading: Text(_avatarEmoji, style: const TextStyle(fontSize: 22)),
-                title: const Text('Edit Profile Name & Avatar (24 Icons)'),
+                title: const Text('Edit Profile Name & Avatar'),
                 subtitle: Text(_profile['name'] ?? 'Alex'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showEditProfileDialog,
@@ -1666,8 +1671,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 20),
 
-        // SECTION 2: Privacy & Security Controls
-        _buildSettingsHeader('2. 🔐 Privacy & Security Controls (100% Offline)'),
+        // SECTION 2: Privacy & Security Controls (With 24-Hour Time Frame Selection)
+        _buildSettingsHeader('2. 🔐 Privacy & Security Controls'),
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
@@ -1682,7 +1687,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (_dailyReminderEnabled)
                       DropdownButton<int>(
                         value: _dailyReminderHour,
-                        items: [18, 19, 20, 21, 22].map((h) => DropdownMenuItem(value: h, child: Text(_formatReminderHour(h)))).toList(),
+                        items: List.generate(24, (h) => DropdownMenuItem(value: h, child: Text(_formatReminderHour(h)))),
                         onChanged: (val) async {
                           if (val != null) {
                             setState(() => _dailyReminderHour = val);
@@ -1944,7 +1949,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Edit Profile & Avatar (24 Icons)'),
+              title: const Text('Edit Profile & Avatar'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
