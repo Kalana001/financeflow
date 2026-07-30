@@ -1488,14 +1488,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('🎯 Category Spending Caps', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const Expanded(
+                        child: Text(
+                          '🎯 Category Caps',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             onPressed: _showSetSingleCategoryBudgetModal,
                             child: const Text('Set Single', style: TextStyle(fontSize: 11)),
                           ),
+                          const SizedBox(width: 4),
                           TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             onPressed: _showSetBulkCategoryBudgetModal,
                             child: const Text('Set All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
