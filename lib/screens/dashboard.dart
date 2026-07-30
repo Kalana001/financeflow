@@ -36,16 +36,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double _whatIfCutPct = 20.0;
   String _whatIfCategory = 'Food';
   
-  // New Preferences
+  // Customization & Security States
   String _avatarEmoji = '👨‍💼';
   int _paydayResetDate = 1;
   bool _stealthMode = false;
   bool _privacyBlurEnabled = true;
   bool _pinLockEnabled = false;
+  String _pinCode = '1234';
+  bool _isDarkMode = false;
   Color _themeColor = const Color(0xFF2563EB);
 
-  // Avatar Choices
-  final List<String> _avatars = ['👨‍💼', '👩‍💼', '🚀', '💎', '🦁', '👑', '🦊', '🤖'];
+  // 20+ Avatar Palette Choices
+  final List<String> _avatars = [
+    '👨‍💼', '👩‍💼', '🚀', '💎', '🦁', '👑', '🦊', '🤖',
+    '🦄', '🐯', '🦅', '🎯', '⚡', '🔥', '🌟', '🏆',
+    '🎩', '💼', '🧘', '🕶️', '🎨', '🔮', '💸', '🐖'
+  ];
 
   // High Value OTP Prompt State
   Map<String, dynamic>? _pendingHighValueTx;
@@ -85,6 +91,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _stealthMode = prof['stealth_mode'] == true;
         _privacyBlurEnabled = prof['privacy_blur'] ?? true;
         _pinLockEnabled = prof['pin_lock'] == true;
+        _pinCode = prof['pin_code'] ?? '1234';
+        _isDarkMode = prof['dark_mode'] == true;
 
         if (prof['theme_color_val'] != null) {
           _themeColor = Color(prof['theme_color_val'] as int);
@@ -213,6 +221,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final themeData = ThemeData(
+      brightness: _isDarkMode ? Brightness.dark : Brightness.light,
+      primaryColor: _themeColor,
+      scaffoldBackgroundColor: _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      cardColor: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _themeColor,
+        brightness: _isDarkMode ? Brightness.dark : Brightness.light,
+      ),
+      useMaterial3: true,
+    );
+
     Widget currentBody;
     switch (_currentTab) {
       case 0:
@@ -234,48 +254,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
         currentBody = _buildHomeTab();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: Icon(_stealthMode ? Icons.visibility_off : Icons.visibility),
-            onPressed: () async {
-              setState(() => _stealthMode = !_stealthMode);
-              await widget.storageService.updateProfileField('stealth_mode', _stealthMode);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          )
-        ],
-      ),
-      body: currentBody,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        onTap: (idx) => setState(() => _currentTab = idx),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: _themeColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Goals'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: _themeColor,
-        onPressed: () => _showAddTransactionBottomSheet(),
-        child: const Icon(Icons.add, color: Colors.white),
+    return Theme(
+      data: themeData,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('FinanceFlow', style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold)),
+          actions: [
+            IconButton(
+              icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+              onPressed: () async {
+                setState(() => _isDarkMode = !_isDarkMode);
+                await widget.storageService.updateProfileField('dark_mode', _isDarkMode);
+              },
+            ),
+            IconButton(
+              icon: Icon(_stealthMode ? Icons.visibility_off : Icons.visibility),
+              onPressed: () async {
+                setState(() => _stealthMode = !_stealthMode);
+                await widget.storageService.updateProfileField('stealth_mode', _stealthMode);
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+            )
+          ],
+        ),
+        body: currentBody,
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentTab,
+          onTap: (idx) => setState(() => _currentTab = idx),
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: _themeColor,
+          unselectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'History'),
+            BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Analytics'),
+            BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Goals'),
+            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: _themeColor,
+          onPressed: () => _showAddTransactionBottomSheet(),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
       ),
     );
   }
 
   // ----------------------------------------------------
-  // 1. HOME TAB
+  // 1. HOME TAB (With Stealth Eye Icon on Card)
   // ----------------------------------------------------
   Widget _buildHomeTab() {
     final budgetPct = _targetMonthlyBudget > 0 ? (_totalExpense / _targetMonthlyBudget).clamp(0.0, 1.0) : 0.0;
@@ -308,7 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Total Net Worth Card
+          // Total Net Worth Card (With Stealth Peek Eye Button 👁️)
           Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
@@ -321,7 +351,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('TOTAL NET WORTH (ALL WALLETS)', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('TOTAL NET WORTH (ALL WALLETS)', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(_stealthMode ? Icons.visibility_off : Icons.visibility, color: Colors.white70, size: 18),
+                      onPressed: () async {
+                        setState(() => _stealthMode = !_stealthMode);
+                        await widget.storageService.updateProfileField('stealth_mode', _stealthMode);
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -485,9 +529,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: _isDarkMode ? Colors.grey[800]! : Colors.grey[300]!),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
         ),
         child: Column(
@@ -501,7 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Text('$_preferredCurrency $balStr', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : Colors.black87)),
+            Text('$_preferredCurrency $balStr', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: balance < 0 ? Colors.red : (_isDarkMode ? Colors.white : Colors.black87))),
           ],
         ),
       ),
@@ -703,7 +747,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 2. TRANSACTIONS TAB
+  // 2. TRANSACTIONS TAB (Redesigned Executive History)
   // ----------------------------------------------------
   Widget _buildTransactionsTab() {
     final filtered = _filteredByMonthTransactions.where((tx) {
@@ -713,8 +757,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return matchesSearch && matchesCat;
     }).toList();
 
+    final filteredIncome = filtered.where((t) => t['type'] == 'income').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+    final filteredExpense = filtered.where((t) => t['type'] == 'expense').fold(0.0, (s, t) => s + (double.tryParse(t['amount'].toString()) ?? 0.0));
+
     return Column(
       children: [
+        // Top Search & Month Filter Header
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -743,7 +791,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              // Filter Summary Metrics Chip Card
+              Card(
+                color: _themeColor.withOpacity(0.08),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Count: ${filtered.length} txs', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text('🟢 In: $_preferredCurrency ${filteredIncome.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+                      Text('🔴 Out: $_preferredCurrency ${filteredExpense.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 10),
+
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1468,7 +1535,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ----------------------------------------------------
-  // 5. SETTINGS TAB (Categorized & Redesigned)
+  // 5. SETTINGS TAB (With Interactive PIN Setup & Dark Theme Switch)
   // ----------------------------------------------------
   Widget _buildSettingsTab() {
     return ListView(
@@ -1482,7 +1549,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               ListTile(
                 leading: Text(_avatarEmoji, style: const TextStyle(fontSize: 22)),
-                title: const Text('Edit Profile Name & Avatar'),
+                title: const Text('Edit Profile Name & Avatar (20+ Icons)'),
                 subtitle: Text(_profile['name'] ?? 'Alex'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _showEditProfileDialog,
@@ -1554,12 +1621,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Divider(height: 1),
               SwitchListTile(
                 secondary: const Icon(Icons.lock, color: Colors.orange),
-                title: const Text('Optional Screen PIN Lock'),
-                subtitle: const Text('Require 4-digit PIN when launching app'),
+                title: const Text('Optional 4-Digit PIN Lock'),
+                subtitle: Text(_pinLockEnabled ? 'Active PIN: $_pinCode' : 'Disabled (Tap to set PIN)'),
                 value: _pinLockEnabled,
                 onChanged: (val) async {
-                  setState(() => _pinLockEnabled = val);
-                  await widget.storageService.updateProfileField('pin_lock', val);
+                  if (val) {
+                    _showSetPinDialog();
+                  } else {
+                    setState(() => _pinLockEnabled = false);
+                    await widget.storageService.updateProfileField('pin_lock', false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('PIN Lock deactivated.')),
+                    );
+                  }
                 },
               ),
             ],
@@ -1650,7 +1724,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Select App Accent Color Theme:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(_isDarkMode ? Icons.dark_mode : Icons.light_mode, color: Colors.amber),
+                  title: const Text('Dark Mode / Light Mode'),
+                  subtitle: Text(_isDarkMode ? 'Dark Theme Active' : 'Light Theme Active'),
+                  value: _isDarkMode,
+                  onChanged: (val) async {
+                    setState(() => _isDarkMode = val);
+                    await widget.storageService.updateProfileField('dark_mode', val);
+                  },
+                ),
+                const Divider(height: 20),
+                const Text('Select Accent Color Theme:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1667,6 +1753,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 30),
       ],
+    );
+  }
+
+  void _showSetPinDialog() {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Set 4-Digit Security PIN'),
+          content: TextField(
+            controller: pinController,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            obscureText: true,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(labelText: 'Enter 4-Digit PIN (e.g. 1234)'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final p = pinController.text.trim();
+                if (p.length == 4) {
+                  Navigator.pop(context);
+                  setState(() {
+                    _pinLockEnabled = true;
+                    _pinCode = p;
+                  });
+                  await widget.storageService.updateProfileField('pin_lock', true);
+                  await widget.storageService.updateProfileField('pin_code', p);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('🔒 PIN Lock activated with code $p.')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('PIN must be exactly 4 digits!')),
+                  );
+                }
+              },
+              child: const Text('Save PIN'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1708,26 +1839,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Edit Profile & Avatar'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Profile Display Name')),
-                  const SizedBox(height: 12),
-                  const Text('Select Avatar Emoji:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _avatars.map((av) {
-                      return ChoiceChip(
-                        label: Text(av, style: const TextStyle(fontSize: 20)),
-                        selected: selectedAvatar == av,
-                        onSelected: (_) => setModalState(() => selectedAvatar = av),
-                      );
-                    }).toList(),
-                  ),
-                ],
+              title: const Text('Edit Profile & Avatar (20+ Icons)'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Profile Display Name')),
+                    const SizedBox(height: 12),
+                    const Text('Select Avatar Emoji:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _avatars.map((av) {
+                        return ChoiceChip(
+                          label: Text(av, style: const TextStyle(fontSize: 20)),
+                          selected: selectedAvatar == av,
+                          onSelected: (_) => setModalState(() => selectedAvatar = av),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -1778,16 +1911,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _loadData();
           },
           child: Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: isExpense ? Colors.red[50] : Colors.green[50],
                 child: Icon(isExpense ? Icons.arrow_downward : Icons.arrow_upward, color: isExpense ? Colors.red : Colors.green),
               ),
-              title: Text(tx['notes'] ?? tx['category'], overflow: TextOverflow.ellipsis),
-              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location'] ?? ''}', overflow: TextOverflow.ellipsis),
+              title: Text(tx['notes'] ?? tx['category'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), overflow: TextOverflow.ellipsis),
+              subtitle: Text('${tx['date']} • ${tx['category']} • ${tx['location'] ?? ''}', style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis),
               trailing: Text(
                 '${isExpense ? '-' : '+'} $_preferredCurrency $amtStr',
-                style: TextStyle(fontWeight: FontWeight.bold, color: isExpense ? Colors.red : Colors.green),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isExpense ? Colors.red : Colors.green),
               ),
             ),
           ),
