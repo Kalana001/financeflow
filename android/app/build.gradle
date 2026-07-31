@@ -30,7 +30,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "com.financeflow.tracker"
-    compileSdk 35
+    compileSdk 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -62,9 +62,6 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            ndk {
-                debugSymbolLevel 'SYMBOL_TABLE'
-            }
             minifyEnabled false
             shrinkResources false
         }
