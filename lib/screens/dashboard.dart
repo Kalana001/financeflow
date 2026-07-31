@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/local_storage_service.dart';
 import '../utils/file_exporter.dart';
+import '../widgets/financeflow_logo.dart';
 
 class DashboardScreen extends StatefulWidget {
   final LocalStorageService storageService;
@@ -409,6 +410,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              FinanceFlowLogo(size: 64, primaryColor: _themeColor, isDarkMode: _isDarkMode),
+              const SizedBox(height: 20),
               CircularProgressIndicator(color: _themeColor),
               const SizedBox(height: 16),
               const Text('Loading FinanceFlow...', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -459,13 +462,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           backgroundColor: Colors.transparent,
           title: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [_themeColor, _themeColor.withOpacity(0.7)]),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 18),
+              FinanceFlowLogo(
+                size: 32,
+                primaryColor: _themeColor,
+                isDarkMode: _isDarkMode,
               ),
               const SizedBox(width: 10),
               Text(
