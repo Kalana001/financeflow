@@ -50,9 +50,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 7. Build Android Release APK
-      - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
+      # 7. Build Android Release APK & App Bundle (.aab)
+      - name: Build APK and App Bundle
+        run: |
+          flutter build apk --release --no-tree-shake-icons
+          flutter build appbundle --release --no-tree-shake-icons
 
       # 8. Upload the built APK as a downloadable Artifact
       - name: Upload APK Artifact
@@ -60,3 +62,10 @@ jobs:
         with:
           name: financeflow-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 9. Upload the built App Bundle (.aab) for Google Play Store
+      - name: Upload Play Store App Bundle (.aab) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: financeflow-playstore-aab
+          path: build/app/outputs/bundle/release/app-release.aab
