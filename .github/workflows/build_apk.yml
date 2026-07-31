@@ -40,6 +40,9 @@ jobs:
       # 5. Restore custom application code and configs
       - name: Restore Custom Source Files
         run: |
+          git checkout android/app/build.gradle || true
+          git checkout android/app/upload-keystore.jks || true
+          git checkout android/key.properties || true
           git checkout android/app/google-services.json || true
           git checkout android/app/src/main/AndroidManifest.xml || true
           git checkout lib/
