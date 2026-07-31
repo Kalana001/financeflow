@@ -35,7 +35,7 @@ jobs:
 
       # 4. Generate clean native platform wrappers
       - name: Create Native Platforms
-        run: flutter create . --overwrite --org com.example
+        run: flutter create . --overwrite --org com.financeflow
 
       # 5. Restore custom application code and configs
       - name: Restore Custom Source Files
